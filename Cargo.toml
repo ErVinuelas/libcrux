@@ -38,6 +38,7 @@ members = [
     "crates/algorithms/aes",
     "crates/algorithms/aes/fuzz",
     "crates/utils/hacl-rs",
+    "crates/utils/xtask",
 ]
 
 [workspace.package]

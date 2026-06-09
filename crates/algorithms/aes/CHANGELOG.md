@@ -19,6 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#26](https://github.com/cryspen/libcrux-evit/pull/26): Change crate name from `libcrux-aesgcm` to `libcrux-aes`
 
+## [0.0.8] (2026-05-13)
+
+### Changed
+
+- [#1434](https://github.com/cryspen/libcrux/pull/1434): Update dependencies: `libcrux-intrinsics`
+- [#1433](https://github.com/cryspen/libcrux/pull/1433): Update dependencies: `libcrux-traits`
+
+### Removed
+
+- [#1385](https://github.com/cryspen/libcrux/pull/1385): Remove empty cargo feature `rand`
+
 ## [0.0.7] (2026-02-12)
 
 ### Changed

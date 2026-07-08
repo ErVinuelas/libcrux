@@ -26,7 +26,7 @@ jobs:
       # security-events:	read/write	none	read
       # statuses:	read/write	none	read
     runs-on: linux
-    if: github.repository == 'cryspen/libcrux-evit'
+    if: github.repository == 'celabshq/libcrux-evit'
     steps:
       - name: Checkout libcrux-evit
         uses: actions/checkout@v4
@@ -40,12 +40,12 @@ jobs:
 
       - name: Add libcrux as upstream
         run: |
-          git remote add upstream https://github.com/cryspen/libcrux.git || true
+          git remote add upstream https://github.com/celabshq/libcrux.git || true
           git fetch upstream
 
       - name: Add libcrux-evit as origin
         run: |
-          git remote add origin https://github.com/cryspen/libcrux-evit.git || true
+          git remote add origin https://github.com/celabshq/libcrux-evit.git || true
           git fetch origin
           
       - name: Create and update sync branch
@@ -59,4 +59,4 @@ jobs:
         run: gh pr create -B main -H merge-public-libcrux --title 'Synchronize with upstream libcrux' --body 'Created by Github action'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: cryspen/libcrux-evit
+          GH_REPO: celabshq/libcrux-evit

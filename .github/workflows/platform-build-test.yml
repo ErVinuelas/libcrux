@@ -18,7 +18,7 @@ concurrency:
 jobs:
   platform:
     if: ${{ github.event_name != 'merge_group' }}
-    runs-on: linux
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
@@ -42,7 +42,7 @@ jobs:
   platform-build-test-status:
     if: ${{ always() }}
     needs: [platform]
-    runs-on: linux
+    runs-on: ubuntu-latest
     steps:
       - name: Successful
         if: ${{ !(contains(needs.*.result, 'failure')) }} 

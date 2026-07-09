@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: linux
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
@@ -62,7 +62,7 @@ jobs:
           LIBCRUX_DISABLE_SIMD128=1 LIBCRUX_DISABLE_SIMD256=1 cargo test --verbose --release
 
   fuzz:
-    runs-on: linux
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash

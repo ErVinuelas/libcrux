@@ -25,7 +25,7 @@ jobs:
       # repository-projects:	read/write	none	read
       # security-events:	read/write	none	read
       # statuses:	read/write	none	read
-    runs-on: linux
+    runs-on: ubuntu-latest
     if: github.repository == 'celabshq/libcrux-evit'
     steps:
       - name: Checkout libcrux-evit

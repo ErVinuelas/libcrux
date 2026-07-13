@@ -9,15 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- [#26](https://github.com/cryspen/libcrux-evit/pull/26): Add support for AES-CCM
+- [#1474](https://github.com/cryspen/libcrux/pull/1474): Add support for AES-CCM
 
 ### Fixed
 
-- [#26](https://github.com/cryspen/libcrux-evit/pull/26): Enforce limits on plaintext and AAD lengths for AES-GCM, according to RFC 5116.
+- [#1474](https://github.com/cryspen/libcrux/pull/1474): Enforce limits on plaintext and AAD lengths for AES-GCM, according to RFC 5116.
 
 ### Changed
 
-- [#26](https://github.com/cryspen/libcrux-evit/pull/26): Change crate name from `libcrux-aesgcm` to `libcrux-aes`
+- [#1474](https://github.com/cryspen/libcrux/pull/1474): Change crate name from `libcrux-aesgcm` to `libcrux-aes`
 
 ## [0.0.8] (2026-05-13)
 

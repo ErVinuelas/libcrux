@@ -62,6 +62,7 @@ members = [
     "crates/utils/core-models",
     "crates/utils/ctgrind-test",
     "crates/utils/hacl-rs",
+    "crates/utils/xtask",
     "crates/utils/intrinsics",
     "crates/utils/macros",
     "crates/utils/secrets",

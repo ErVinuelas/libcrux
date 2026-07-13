@@ -27,7 +27,7 @@ jobs:
         working-directory: crates/algorithms/aes
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@v6
 
       - name: Update dependencies
         run: cargo update
@@ -48,18 +48,18 @@ jobs:
           cargo build --release --target ${{ matrix.target }}
 
   test:
-    runs-on: self-hosted
     strategy:
         fail-fast: false
         matrix:
             target: [riscv64gc-unknown-linux-gnu, armv7-unknown-linux-gnueabihf]
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
         working-directory: crates/algorithms/aes
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@v6
 
       - name: Update dependencies
         run: cargo update

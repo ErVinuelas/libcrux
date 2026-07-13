@@ -1,0 +1,283 @@
+name: ML-KEM - Build & Test C
+
+on:
+  merge_group:
+  pull_request:
+    branches: ["main", "dev"]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-c
+  VERSION_TAG: latest
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            docker-c:
+              - ".docker/c/**"
+        # If one of the above files is changed,
+        # `steps.changes.outputs.docker-c` = 'true'.
+    outputs:
+      # only run if files in `.docker/c/` unchanged
+      should-run: ${{ steps.changes.outputs.docker-c == 'false' }}
+      image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION_TAG }}
+
+  mlkem-c-tests-status:
+    if: ${{ always() }}
+    needs:
+      - setup
+      - extract-c
+      - extract-c-header-only
+      - extract-cpp-header-only
+      - diff
+      - build-c
+      - build-c-header-only
+      - build-cpp-header-only
+    runs-on: ubuntu-latest
+    steps:
+      - name: Successful
+        if: ${{ !(contains(needs.*.result, 'failure')) }}
+        run: exit 0
+      - name: Failing
+        if: ${{ (contains(needs.*.result, 'failure')) }}
+        run: exit 1
+
+  extract-c:
+    needs: [setup]
+    if: ${{ needs.setup.outputs.should-run == 'true' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ needs.setup.outputs.image }}
+    defaults:
+      run:
+        working-directory: libcrux-ml-kem/extracts/c
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Extract C
+        run: |
+          export HOME=/home/user
+          ./extract.sh
+
+      - name: Upload C extraction
+        uses: actions/upload-artifact@v5
+        with:
+          name: c-extraction-ml-kem
+          path: libcrux-ml-kem/extracts/c/generated
+          include-hidden-files: true
+          if-no-files-found: error
+
+  extract-c-header-only:
+    needs: [setup]
+    if: ${{ needs.setup.outputs.should-run == 'true' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ needs.setup.outputs.image }}
+    defaults:
+      run:
+        working-directory: libcrux-ml-kem/extracts/c_header_only
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Extract C (header only)
+        run: |
+          export HOME=/home/user
+          ./extract.sh
+
+      - name: Upload C extraction (header only)
+        uses: actions/upload-artifact@v5
+        with:
+          name: c-ho-extraction-ml-kem
+          path: libcrux-ml-kem/extracts/c_header_only/generated
+          include-hidden-files: true
+          if-no-files-found: error
+
+  extract-cpp-header-only:
+    needs: [setup]
+    if: ${{ needs.setup.outputs.should-run == 'true' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ needs.setup.outputs.image }}
+    defaults:
+      run:
+        working-directory: libcrux-ml-kem/extracts/cpp_header_only
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Extract C++
+        run: |
+          export HOME=/home/user
+          ./extract.sh --no-clean
+
+      - name: Upload C++ extraction
+        uses: actions/upload-artifact@v5
+        with:
+          name: cpp-ho-extraction-ml-kem
+          path: libcrux-ml-kem/extracts/cpp_header_only/generated
+          include-hidden-files: true
+          if-no-files-found: error
+
+
+  diff:
+    needs: [extract-c-header-only, extract-cpp-header-only]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: cpp-ho-extraction-ml-kem
+          path: ~/mlkem-cpp-extraction
+      - uses: actions/download-artifact@v7
+        with:
+          name: c-ho-extraction-ml-kem
+          path: ~/mlkem-c-extraction
+
+      - uses: actions/checkout@v6
+
+      - name: Diff Extraction C++
+        run: |
+          libcrux-ml-kem/extracts/common/headers_kill_revs.sh libcrux-ml-kem/extracts/cpp_header_only/generated
+          libcrux-ml-kem/extracts/common/headers_kill_revs.sh ~/mlkem-cpp-extraction
+          diff -r libcrux-ml-kem/extracts/cpp_header_only/generated ~/mlkem-cpp-extraction
+
+      - name: Diff Extraction C
+        run: |
+          libcrux-ml-kem/extracts/common/headers_kill_revs.sh libcrux-ml-kem/extracts/c_header_only/generated
+          libcrux-ml-kem/extracts/common/headers_kill_revs.sh ~/mlkem-c-extraction
+          diff -r libcrux-ml-kem/extracts/c_header_only/generated ~/mlkem-c-extraction
+
+  build-c:
+    needs: [extract-c]
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: c-extraction-ml-kem
+
+      - name: Set CC and CXX to Clang on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+
+      - name: 🔨 Build
+        run: |
+          cmake -B build
+          cmake --build build
+
+      - name: 🏃🏻‍♀️ Test 768
+        run: ./build/ml_kem_test768
+        if: ${{ matrix.os != 'windows-latest' }}
+
+      - name: 🏃🏻‍♀️ Test 768
+        run: ./build/Debug/ml_kem_test768
+        if: ${{ matrix.os == 'windows-latest' }}
+
+      - name: 🏃🏻‍♀️ Test 1024
+        run: ./build/ml_kem_test1024
+        if: ${{ matrix.os != 'windows-latest' }}
+
+      - name: 🏃🏻‍♀️ Test 1024
+        run: ./build/Debug/ml_kem_test1024
+        if: ${{ matrix.os == 'windows-latest' }}
+
+  build-c-header-only:
+    needs: [extract-c-header-only]
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: c-ho-extraction-ml-kem
+
+      - name: Set CC and CXX to Clang on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+
+      - name: 🔨 Build
+        run: |
+          cmake -B build
+          cmake --build build
+
+      - name: 🏃🏻‍♀️ Test
+        run: ./build/ml_kem_test768
+        if: ${{ matrix.os != 'windows-latest' }}
+
+      - name: 🏃🏻‍♀️ Test
+        run: ./build/Debug/ml_kem_test768
+        if: ${{ matrix.os == 'windows-latest' }}
+
+  build-cpp-header-only:
+    needs: [extract-cpp-header-only]
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: cpp-ho-extraction-ml-kem
+
+      - name: Set CC and CXX to Clang on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+
+      - name: 🔨 Build
+        run: |
+          cmake -B build
+          cmake --build build
+
+      - name: 🏃🏻‍♀️ Test
+        run: ./build/ml_kem_test768
+        if: ${{ matrix.os != 'windows-latest' }}
+
+      - name: 🏃🏻‍♀️ Test
+        run: ./build/Debug/ml_kem_test768
+        if: ${{ matrix.os == 'windows-latest' }}

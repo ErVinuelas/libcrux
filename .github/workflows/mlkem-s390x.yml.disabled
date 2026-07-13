@@ -1,0 +1,53 @@
+name: ML-KEM - Build & Test on s390x
+
+on:
+  merge_group:
+  pull_request:
+    branches: ["main", "dev"]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  s390x-status:
+    if: ${{ always() }}
+    needs:
+      - s390x
+    runs-on: ubuntu-latest
+    steps:
+      - name: Successful
+        if: ${{ !(contains(needs.*.result, 'failure')) }}
+        run: exit 0
+      - name: Failing
+        if: ${{ (contains(needs.*.result, 'failure')) }}
+        run: exit 1
+
+  s390x:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    name: Build on ubuntu-22.04 s390x
+    steps:
+      - uses: actions/checkout@v6
+      - uses: uraimo/run-on-arch-action@v3
+        name: Run
+        id: runcmd
+        with:
+          arch: s390x
+          distro: ubuntu22.04
+
+          # Speed up builds by storing container images in
+          # a GitHub package registry.
+          githubToken: ${{ github.token }}
+
+          run: |
+            apt-get -y update
+            apt-get install -y curl gcc g++ make cmake ninja-build git
+            cd libcrux-ml-kem/extracts/cpp_header_only/generated
+            cmake -B build -G"Ninja Multi-Config"
+            cmake --build build
+            ./build/Debug/ml_kem_test768

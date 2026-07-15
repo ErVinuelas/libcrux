@@ -48,4 +48,14 @@ impl TestSet {
         let data = include_str!("../../wycheproof/ecdsa_secp256r1_sha512_test.json");
         serde_json::from_str(data).expect("could not deserialize ecdsa_secp256r1_sha512 KAT file")
     }
+
+    pub fn load_secp384r1_sha256() -> Self {
+        let data = include_str!("../../wycheproof/ecdsa_secp384r1_sha256_test.json");
+        serde_json::from_str(data).expect("could not deserialize ecdsa_secp384r1_sha256 KAT file")
+    }
+
+    pub fn load_secp384r1_sha512() -> Self {
+        let data = include_str!("../../wycheproof/ecdsa_secp384r1_sha512_test.json");
+        serde_json::from_str(data).expect("could not deserialize ecdsa_secp384r1_sha512 KAT file")
+    }
 }

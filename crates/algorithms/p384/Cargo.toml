@@ -11,5 +11,5 @@ readme.workspace = true
 
 [dependencies]
 
-[lib]
-path = "src/p384.rs"
+[dev-dependencies]
+libcrux-kats = { workspace = true, features = ["ecdh"] }

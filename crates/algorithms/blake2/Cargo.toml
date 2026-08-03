@@ -11,8 +11,9 @@ edition.workspace = true
 repository.workspace = true
 
 [features]
-std = []
-default = ["std"]
+# For errors that implement `core::error::Error`
+alloc = []
+default = []
 
 [dependencies]
 libcrux-hacl-rs.workspace = true

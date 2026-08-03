@@ -1,3 +1,4 @@
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
 /// Indicates an error has occurred
@@ -15,6 +16,7 @@ pub enum Error {
     Unexpected,
 }
 
+#[cfg(feature = "alloc")]
 impl alloc::fmt::Display for Error {
     fn fmt(&self, f: &mut alloc::fmt::Formatter<'_>) -> alloc::fmt::Result {
         let text = match self {
@@ -29,8 +31,5 @@ impl alloc::fmt::Display for Error {
     }
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(feature = "alloc")]
 impl core::error::Error for Error {}
-
-#[cfg(feature = "std")]
-impl std::error::Error for Error {}

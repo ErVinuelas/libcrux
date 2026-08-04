@@ -1,13 +1,14 @@
 [package]
 name = "libcrux-hmac-drbg"
 readme = "Readme.md"
+version = "0.0.1"
+description = "Libcrux HMAC-DRBG implementation"
 
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
 repository.workspace = true
-version.workspace = true
 
 [features]
 default = []
@@ -18,7 +19,7 @@ default = []
 rand = ["dep:rand"]
 
 # Exposes APIs that should only be used for testing this library.
-testing = []
+_testing-apis = []
 
 # Enables continuous health tests per NIST SP 800-90C §9.3.3 and AIS 20/31 T4:
 #   - Intra-call: each V = HMAC(K,V_old) must satisfy V ≠ V_old.

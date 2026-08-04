@@ -5,12 +5,15 @@ extern crate alloc;
 
 use alloc::{string::String, vec::Vec};
 use core::fmt::Display;
-use rand_core_new::TryRng;
+use rand::{rngs::SysRng, Rng};
+use rand_core::{SeedableRng, UnwrapErr};
 use zeroize::Zeroize;
 
 use hpke_rs_crypto::{
     error::Error,
-    types::{AeadAlgorithm, KdfAlgorithm, KemAlgorithm},
+    types::{
+        AeadAlgorithm, KdfAlgorithm, KemAlgorithm, SingleStageKdfAlgorithm, TwoStageKdfAlgorithm,
+    },
     HpkeCrypto, HpkeTestRng,
 };
 use p256::{
@@ -28,7 +31,6 @@ use p384::{
     SecretKey as p384SecretKey,
 };
 
-use rand_core::SeedableRng;
 use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret as X25519StaticSecret};
 
 mod aead;
@@ -36,8 +38,9 @@ mod hkdf;
 // XXX: These are broken and pre-releases. Disabling them until they are stable.
 #[cfg(feature = "experimental")]
 mod pq_kem;
-use crate::aead::*;
 use crate::hkdf::*;
+use crate::{aead::*, rand_shim::RandShim};
+mod rand_shim;
 
 /// The Rust Crypto HPKE Provider
 #[derive(Debug)]
@@ -61,25 +64,31 @@ impl HpkeCrypto for HpkeRustCrypto {
         "RustCrypto".into()
     }
 
-    fn kdf_extract(alg: KdfAlgorithm, salt: &[u8], ikm: &[u8]) -> Result<Vec<u8>, Error> {
+    fn kdf_extract(alg: TwoStageKdfAlgorithm, salt: &[u8], ikm: &[u8]) -> Result<Vec<u8>, Error> {
         Ok(match alg {
-            KdfAlgorithm::HkdfSha256 => sha256_extract(salt, ikm),
-            KdfAlgorithm::HkdfSha384 => sha384_extract(salt, ikm),
-            KdfAlgorithm::HkdfSha512 => sha512_extract(salt, ikm),
+            TwoStageKdfAlgorithm::HkdfSha256 => sha256_extract(salt, ikm),
+            TwoStageKdfAlgorithm::HkdfSha384 => sha384_extract(salt, ikm),
+            TwoStageKdfAlgorithm::HkdfSha512 => sha512_extract(salt, ikm),
         })
     }
 
     fn kdf_expand(
-        alg: KdfAlgorithm,
+        alg: TwoStageKdfAlgorithm,
         prk: &[u8],
         info: &[u8],
         output_size: usize,
     ) -> Result<Vec<u8>, Error> {
         match alg {
-            KdfAlgorithm::HkdfSha256 => sha256_expand(prk, info, output_size),
-            KdfAlgorithm::HkdfSha384 => sha384_expand(prk, info, output_size),
-            KdfAlgorithm::HkdfSha512 => sha512_expand(prk, info, output_size),
+            TwoStageKdfAlgorithm::HkdfSha256 => sha256_expand(prk, info, output_size),
+            TwoStageKdfAlgorithm::HkdfSha384 => sha384_expand(prk, info, output_size),
+            TwoStageKdfAlgorithm::HkdfSha512 => sha512_expand(prk, info, output_size),
         }
+    }
+
+    fn kdf_derive(_alg: SingleStageKdfAlgorithm, _ikm: &[u8], _l: usize) -> Result<Vec<u8>, Error> {
+        // The RustCrypto provider does not implement the single-stage (SHAKE)
+        // KDFs of draft-ietf-hpke-pq.
+        Err(Error::UnknownKdfAlgorithm)
     }
 
     fn dh(alg: KemAlgorithm, pk: &[u8], sk: &[u8]) -> Result<Vec<u8>, Error> {
@@ -203,28 +212,28 @@ impl HpkeCrypto for HpkeRustCrypto {
         match alg {
             KemAlgorithm::DhKem25519 => {
                 let rng = &mut prng.rng;
-                let sk = X25519StaticSecret::random_from_rng(&mut *rng);
+                let sk = X25519StaticSecret::random_from_rng(RandShim(rng));
                 let pk = X25519PublicKey::from(&sk).as_bytes().to_vec();
                 let sk = sk.to_bytes().to_vec();
                 Ok((pk, sk))
             }
             KemAlgorithm::DhKemP256 => {
                 let rng = &mut prng.rng;
-                let sk = p256SecretKey::random(&mut *rng);
+                let sk = p256SecretKey::random(&mut RandShim(rng));
                 let pk = sk.public_key().to_encoded_point(false).as_bytes().into();
                 let sk = sk.to_bytes().as_slice().into();
                 Ok((pk, sk))
             }
             KemAlgorithm::DhKemP384 => {
                 let rng = &mut prng.rng;
-                let sk = p384SecretKey::random(&mut *rng);
+                let sk = p384SecretKey::random(&mut RandShim(rng));
                 let pk = sk.public_key().to_encoded_point(false).as_bytes().into();
                 let sk = sk.to_bytes().as_slice().into();
                 Ok((pk, sk))
             }
             KemAlgorithm::DhKemK256 => {
                 let rng = &mut prng.rng;
-                let sk = k256SecretKey::random(&mut *rng);
+                let sk = k256SecretKey::random(&mut RandShim(rng));
                 let pk = sk.public_key().to_encoded_point(false).as_bytes().into();
                 let sk = sk.to_bytes().as_slice().into();
                 Ok((pk, sk))
@@ -289,24 +298,34 @@ impl HpkeCrypto for HpkeRustCrypto {
     type HpkePrng = HpkeRustCryptoPrng;
 
     fn prng() -> Self::HpkePrng {
+        let rng = rand_chacha::ChaCha20Rng::from_rng(&mut UnwrapErr(SysRng));
+
         #[cfg(feature = "deterministic-prng")]
         {
+            use rand::Rng;
+
             let mut fake_rng = alloc::vec![0u8; 256];
-            rand_chacha::ChaCha20Rng::from_entropy().fill_bytes(&mut fake_rng);
-            HpkeRustCryptoPrng {
-                fake_rng,
-                rng: rand_chacha::ChaCha20Rng::from_entropy(),
-            }
+            let mut rng = rng;
+            rng.fill_bytes(&mut fake_rng);
+
+            HpkeRustCryptoPrng { fake_rng, rng }
         }
         #[cfg(not(feature = "deterministic-prng"))]
-        HpkeRustCryptoPrng {
-            rng: rand_chacha::ChaCha20Rng::from_entropy(),
-        }
+        HpkeRustCryptoPrng { rng }
     }
 
     /// Returns an error if the KDF algorithm is not supported by this crypto provider.
-    fn supports_kdf(_: KdfAlgorithm) -> Result<(), Error> {
-        Ok(())
+    fn supports_kdf(alg: KdfAlgorithm) -> Result<(), Error> {
+        match alg {
+            KdfAlgorithm::HkdfSha256 | KdfAlgorithm::HkdfSha384 | KdfAlgorithm::HkdfSha512 => {
+                Ok(())
+            }
+            // The SHAKE KDFs (draft-ietf-hpke-pq) are not supported here yet.
+            KdfAlgorithm::TurboShake128
+            | KdfAlgorithm::TurboShake256
+            | KdfAlgorithm::Shake128
+            | KdfAlgorithm::Shake256 => Err(Error::UnknownKdfAlgorithm),
+        }
     }
 
     /// Returns an error if the KEM algorithm is not supported by this crypto provider.
@@ -334,32 +353,7 @@ impl HpkeCrypto for HpkeRustCrypto {
     }
 }
 
-// We need to implement the old and new traits here because the crytpo uses the
-// old one.
-
-impl rand_old::RngCore for HpkeRustCryptoPrng {
-    fn next_u32(&mut self) -> u32 {
-        self.rng.next_u32()
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        self.rng.next_u64()
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        self.rng.fill_bytes(dest);
-    }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
-        self.rng.try_fill_bytes(dest)
-    }
-}
-
-impl rand_old::CryptoRng for HpkeRustCryptoPrng {}
-
-use rand_old::RngCore as _;
-
-impl TryRng for HpkeRustCryptoPrng {
+impl rand_core::TryRng for HpkeRustCryptoPrng {
     type Error = core::convert::Infallible;
 
     fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
@@ -376,14 +370,14 @@ impl TryRng for HpkeRustCryptoPrng {
     }
 }
 
-impl rand_core_new::TryCryptoRng for HpkeRustCryptoPrng {}
+impl rand_core::TryCryptoRng for HpkeRustCryptoPrng {}
 
 impl HpkeTestRng for HpkeRustCryptoPrng {
     #[cfg(feature = "deterministic-prng")]
-    fn try_fill_test_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_old::Error> {
+    fn try_fill_test_bytes(&mut self, dest: &mut [u8]) -> Result<(), HpkeTestRngError> {
         // Here we fake our randomness for testing.
         if dest.len() > self.fake_rng.len() {
-            return Err(rand_core::Error::new(Error::InsufficientRandomness));
+            return Err(HpkeTestRngError::InsufficientRandomness);
         }
         dest.clone_from_slice(&self.fake_rng.split_off(self.fake_rng.len() - dest.len()));
         Ok(())
@@ -393,19 +387,35 @@ impl HpkeTestRng for HpkeRustCryptoPrng {
     fn seed(&mut self, seed: &[u8]) {
         self.fake_rng = seed.to_vec();
     }
+
     #[cfg(not(feature = "deterministic-prng"))]
-    fn try_fill_test_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_old::Error> {
-        self.rng.try_fill_bytes(dest)
+    fn try_fill_test_bytes(&mut self, dest: &mut [u8]) -> Result<(), HpkeTestRngError> {
+        use rand::Rng;
+        self.rng.fill_bytes(dest);
+        Ok(())
     }
 
     #[cfg(not(feature = "deterministic-prng"))]
     fn seed(&mut self, _: &[u8]) {}
 
-    type Error = rand_old::Error;
+    type Error = HpkeTestRngError;
 }
 
 impl Display for HpkeRustCrypto {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", Self::name())
+    }
+}
+
+#[derive(Debug)]
+pub enum HpkeTestRngError {
+    InsufficientRandomness,
+}
+
+impl Display for HpkeTestRngError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            HpkeTestRngError::InsufficientRandomness => write!(f, "Insufficient randomness"),
+        }
     }
 }

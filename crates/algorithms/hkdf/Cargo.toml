@@ -20,5 +20,5 @@ check-secret-independence = ["libcrux-secrets/check-secret-independence"]
 libcrux-hmac = { workspace = true, features = [
     "expose-hacl",
 ] }
-libcrux-hacl-rs.workspace = true
+libcrux-hacl-rs = { workspace = true, features = ["alloc"] }
 libcrux-secrets.workspace = true

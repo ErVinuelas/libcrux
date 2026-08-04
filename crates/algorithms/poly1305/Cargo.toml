@@ -14,7 +14,7 @@ repository.workspace = true
 expose-hacl = []
 
 [dependencies]
-libcrux-hacl-rs = { workspace = true, features = ["alloc"] }
+libcrux-hacl-rs.workspace = true
 libcrux-macros = { version = "=0.0.3", path = "../../utils/macros" }
 
 [dev-dependencies]

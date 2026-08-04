@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- [#xyz](https://github.com/celabshq/libcrux/pull/xyz): One-shot API takes a mutable output buffer instead of returning a `Vec`
+- [#70](https://github.com/celabshq/libcrux/pull/70): Breaking - One-shot API takes a mutable output buffer instead of returning a `Vec`
 
 ## [0.0.8] (2026-07-15)
 

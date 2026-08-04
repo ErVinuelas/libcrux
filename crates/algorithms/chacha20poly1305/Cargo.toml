@@ -14,7 +14,7 @@ repository.workspace = true
 libcrux-poly1305 = { version = "=0.0.6", path = "../poly1305/", features = [
     "expose-hacl",
 ] }
-libcrux-hacl-rs = { workspace = true, features = ["alloc"] }
+libcrux-hacl-rs.workspace = true
 libcrux-macros = { version = "=0.0.3", path = "../../utils/macros" }
 libcrux-traits.workspace = true
 libcrux-secrets.workspace = true

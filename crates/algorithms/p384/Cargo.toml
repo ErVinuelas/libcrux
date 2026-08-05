@@ -1,0 +1,15 @@
+[package]
+name = "libcrux-p384"
+version = "0.0.1"
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+
+[lib]
+path = "src/p384.rs"

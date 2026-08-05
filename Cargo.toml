@@ -76,6 +76,7 @@ members = [
     "libcrux-psq",
     "libcrux-psq/fuzz",
     "traits",
+    "crates/algorithms/p384",
 ]
 
 # These crates are not part of the main libcrux library.
@@ -138,6 +139,7 @@ libcrux-ecdh = { version = "=0.0.8", path = "libcrux-ecdh", default-features = f
 libcrux-curve25519 = { version = "=0.0.8", path = "crates/algorithms/curve25519", default-features = false }
 libcrux-ml-kem = { version = "=0.0.10", path = "libcrux-ml-kem", default-features = false }
 libcrux-p256 = { version = "=0.0.8", path = "crates/algorithms/p256", default-features = false }
+libcrux-p384 = { version = "=0.0.1", path = "crates/algorithms/p384", default-features = false }
 
 # Test utilities
 libcrux-kats = { path = "crates/testing/kats" }

@@ -55,8 +55,10 @@ impl AffinePoint {
         let x_bytes = &uncompressed_bytes[1..49];
         let y_bytes = &uncompressed_bytes[49..];
 
-        let x_raw = FpRaw::from_be_bytes(x_bytes.try_into().expect("x_bytes is 48 bytes long"));
-        let y_raw = FpRaw::from_be_bytes(y_bytes.try_into().expect("y_bytes is 48 bytes long"));
+        let x_raw = FpRaw::from_be_bytes(x_bytes.try_into().expect("x_bytes is 48 bytes long"))
+            .map_err(|_| Error::InvalidUncompressed)?;
+        let y_raw = FpRaw::from_be_bytes(y_bytes.try_into().expect("y_bytes is 48 bytes long"))
+            .map_err(|_| Error::InvalidUncompressed)?;
 
         Ok(AffinePoint { x: x_raw, y: y_raw })
     }

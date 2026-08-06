@@ -4,8 +4,7 @@ use crate::{
         NIST_P384_GX, NIST_P384_GX_BE_BYTES, NIST_P384_GY, NIST_P384_GY_BE_BYTES,
     },
     field::{
-        fiat_p384_set_one, fp_add, fp_from_bytes, fp_from_montgomery, fp_inv, fp_mul, fp_nonzero,
-        fp_square, fp_sub, fp_to_montgomery, Fp, FpRaw,
+        fiat_p384_set_one, fp_from_montgomery, fp_inv, fp_nonzero, fp_to_montgomery, Fp, FpRaw,
     },
     Error,
 };
@@ -51,13 +50,13 @@ impl AffinePoint {
         let x = Fp::from_raw(&self.x);
         let y = Fp::from_raw(&self.y);
 
-        let y_squared = y.square();
+        let y_squared = &y * &y;
 
-        let x_cubed = x.mul(&x.square());
-        let ax = x.mul(&NIST_P384_A);
-        let rhs = x_cubed.add(&ax).add(&NIST_P384_B);
+        let x_cubed = &(&x * &x) * &x;
+        let ax = &x * &NIST_P384_A;
+        let rhs = &(&x_cubed + &ax) + &NIST_P384_B;
 
-        !fp_nonzero(&y_squared.sub(&rhs))
+        !fp_nonzero(&(&y_squared - &rhs))
     }
 }
 
@@ -77,49 +76,63 @@ impl ProjectivePoint {
             z: z2,
         } = other;
 
-        let mut t0 = x1.mul(x2); // 1.
-        let mut t1 = y1.mul(y2); // 2.
-        let mut t2 = z1.mul(z2); // 3.
-        let mut t3 = x1.add(y1); // 4.
-        let mut t4 = x2.add(y2); // 5.
-        t3.mul_assign(&t4); // 6.
-        t4 = t0.add(&t1); // 7.
-        t3.sub_assign(&t4); // 8.
-        t4 = y1.add(z1); // 9.
-        let mut x3 = y2.add(z2); // 10.
-        t4.mul_assign(&x3); // 11.
-        x3 = t1.add(&t2); // 12.
-        t4.sub_assign(&x3); // 13.
-        x3 = x1.add(z1); // 14.
-        let mut y3 = x2.add(z2); // 15.
-        x3.mul_assign(&y3); // 16.
-        y3 = t0.add(&t2); // 17.
-        y3 = x3.sub(&y3); // 18.
-        let mut z3 = t2.mul(&NIST_P384_B); // 19.
-        x3 = y3.sub(&z3); // 20.
-        z3 = x3.double(); // 21.
-        x3.add_assign(&z3); // 22.
-        z3 = t1.sub(&x3); // 23.
-        x3.add_assign(&t1); // 24.
-        y3.mul_assign(&NIST_P384_B); // 25.
-        t1 = t2.double(); // 26.
-        t2.add_assign(&t1); // 27.
-        y3.sub_assign(&t2); // 28.
-        y3.sub_assign(&t0); // 29.
-        t1 = y3.double(); // 30.
-        y3.add_assign(&t1); // 31.
-        t1 = t0.double(); // 32.
-        t0.add_assign(&t1); // 33.
-        t0.sub_assign(&t2); // 34.
-        t1 = t4.mul(&y3); // 35.
-        t2 = t0.mul(&y3); // 36.
-        y3 = x3.mul(&z3); // 37.
-        y3.add_assign(&t2); // 38.
-        x3.mul_assign(&t3); // 39.
-        x3.sub_assign(&t1); // 40.
-        z3.mul_assign(&t4); // 41.
-        t1 = t3.mul(&t0); // 42.
-        z3.add_assign(&t1); // 43.
+        let mut t0 = x1 * x2; // 1.
+        let mut t1 = y1 * y2; // 2.
+        let mut t2 = z1 * z2; // 3.
+
+        let mut t3 = x1 + y1; // 4.
+        let mut t4 = x2 + y2; // 5.
+        t3 *= t4; // 6.
+
+        t4 = &t0 + &t1; // 7.
+        t3 -= t4; // 8.
+        t4 = y1 + z1; // 9.
+
+        let mut x3 = y2 + z2; // 10.
+        t4 *= x3; // 11.
+        x3 = &t1 + &t2; // 12.
+
+        t4 -= x3; // 13.
+        x3 = x1 + z1; // 14.
+        let mut y3 = x2 + z2; // 15.
+
+        x3 *= y3; // 16.
+        y3 = &t0 + &t2; // 17.
+        y3 = &x3 - &y3; // 18.
+
+        let mut z3 = &t2 * &NIST_P384_B; // 19.
+        x3 = &y3 - &z3; // 20.
+        z3 = &x3 + &x3; // 21.
+
+        x3 += z3; // 22.
+        z3 = &t1 - &x3; // 23.
+        x3 += t1; // 24.
+
+        y3 *= NIST_P384_B; // 25.
+        t1 = &t2 + &t2; // 26.
+        t2 += t1; // 27.
+
+        y3 -= t2; // 28.
+        y3 -= t0; // 29.
+        t1 = &y3 + &y3; // 30.
+
+        y3 += t1; // 31.
+        t1 = &t0 + &t0; // 32.
+        t0 += t1; // 33.
+
+        t0 -= t2; // 34.
+        t1 = &t4 * &y3; // 35.
+        t2 = &t0 * &y3; // 36.
+
+        y3 = &x3 * &z3; // 37.
+        y3 += t2; // 38.
+        x3 *= t3; // 39.
+
+        x3 -= t1; // 40.
+        z3 *= t4; // 41.
+        t1 = &t3 * &t0; // 42.
+
+        z3 += t1; // 43.
 
         ProjectivePoint {
             x: x3,
@@ -199,11 +212,8 @@ impl TryFrom<ProjectivePoint> for AffinePoint {
         let mut z_inv = Fp::default();
         fp_inv(&mut z_inv, &value.z);
 
-        let mut x = Fp::default();
-        fp_mul(&mut x, &value.x, &z_inv);
-
-        let mut y = Fp::default();
-        fp_mul(&mut y, &value.y, &z_inv);
+        let x = &value.x * &z_inv;
+        let y = &value.y * &z_inv;
 
         let mut affine_point = AffinePoint::default();
         fp_from_montgomery(&mut affine_point.x, &x);

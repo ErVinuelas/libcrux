@@ -90,53 +90,74 @@ pub(crate) fn fp_nonzero(x: &Fp) -> bool {
     test != 0
 }
 
+use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+
+impl Add<&Fp> for &Fp {
+    type Output = Fp;
+
+    fn add(self, rhs: &Fp) -> Self::Output {
+        let mut out = Fp::new();
+        fp_add(&mut out, self, rhs);
+        out
+    }
+}
+impl Mul<&Fp> for &Fp {
+    type Output = Fp;
+
+    fn mul(self, rhs: &Fp) -> Self::Output {
+        let mut out = Fp::new();
+        fp_mul(&mut out, self, rhs);
+        out
+    }
+}
+impl Sub<&Fp> for &Fp {
+    type Output = Fp;
+
+    fn sub(self, rhs: &Fp) -> Self::Output {
+        let mut out = Fp::new();
+        fp_sub(&mut out, self, rhs);
+        out
+    }
+}
+impl Neg for &Fp {
+    type Output = Fp;
+
+    fn neg(self) -> Self::Output {
+        let mut out = Fp::new();
+        fp_opp(&mut out, self);
+        out
+    }
+}
+impl AddAssign for Fp {
+    fn add_assign(&mut self, rhs: Self) {
+        let mut tmp = Fp::new();
+        fp_add(&mut tmp, &self, &rhs);
+        *self = tmp;
+    }
+}
+
+impl SubAssign for Fp {
+    fn sub_assign(&mut self, rhs: Self) {
+        let mut tmp = Fp::new();
+        fp_sub(&mut tmp, &self, &rhs);
+        *self = tmp;
+    }
+}
+
+impl MulAssign for Fp {
+    fn mul_assign(&mut self, rhs: Self) {
+        let mut tmp = Fp::new();
+        fp_mul(&mut tmp, &self, &rhs);
+        *self = tmp;
+    }
+}
+
 impl Fp {
-    pub(crate) fn square(&self) -> Fp {
-        let mut result = Fp::default();
-        fp_square(&mut result, &self);
-        result
+    pub(crate) const fn new() -> Self {
+        Self([0u64; 6])
     }
 
-    pub(crate) fn mul(&self, other: &Self) -> Fp {
-        let mut result = Fp::default();
-        fp_mul(&mut result, &self, other);
-        result
-    }
-
-    pub(crate) fn add(&self, other: &Self) -> Fp {
-        let mut result = Fp::default();
-        fp_add(&mut result, &self, other);
-        result
-    }
-    pub(crate) fn double(&self) -> Fp {
-        let mut result = Fp::default();
-        fp_add(&mut result, &self, &self);
-        result
-    }
-
-    pub(crate) fn sub(&self, other: &Self) -> Fp {
-        let mut result = Fp::default();
-        fp_sub(&mut result, &self, other);
-        result
-    }
-
-    pub(crate) fn mul_assign(&mut self, other: &Self) {
-        let mut result = Fp::default();
-        fp_mul(&mut result, &self, other);
-        *self = result;
-    }
-    pub(crate) fn add_assign(&mut self, other: &Self) {
-        let mut result = Fp::default();
-        fp_add(&mut result, &self, other);
-        *self = result;
-    }
-
-    pub(crate) fn sub_assign(&mut self, other: &Self) {
-        let mut result = Fp::default();
-        fp_sub(&mut result, &self, other);
-        *self = result;
-    }
-
+    #[must_use]
     pub(crate) fn from_raw(raw: &FpRaw) -> Fp {
         let mut result = Fp::default();
         fp_to_montgomery(&mut result, raw);

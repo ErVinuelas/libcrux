@@ -247,11 +247,26 @@ impl ProjectivePoint {
         }
     }
 
+    /// Any point with Z = 0 represents the point at infinity.
     fn is_point_at_infinity(&self) -> bool {
-        let mut y_inf = Fp::default();
-        fiat_p384_set_one(&mut y_inf);
+        !fp_nonzero(&self.z)
+    }
 
-        let mut diff_y = Fp::default();
+    const fn generator() -> Self {
+        ProjectivePoint {
+            x: NIST_P384_GX,
+            y: NIST_P384_GY,
+            z: FP_ONE,
+        }
+    }
+
+    const fn identity() -> Self {
+        ProjectivePoint {
+            x: FP_ONE,
+            y: FP_ONE,
+            z: Fp([0u64; 6]),
+        }
+    }
 
         fp_sub(&mut diff_y, &self.y, &y_inf);
 

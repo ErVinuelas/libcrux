@@ -20,6 +20,12 @@ pub(crate) use p384_64::{
     fiat_p384_non_montgomery_domain_field_element as FpRaw, fiat_p384_nonzero, fiat_p384_set_one,
 };
 
+use crate::{
+    constants::{fpraw_from_be_bytes, NIST_P384_P_BE_BYTES},
+    util::be_bytes_lt,
+    Error,
+};
+
 mod safegcd;
 mod safegcd_p384;
 
@@ -166,18 +172,24 @@ impl Fp {
 }
 
 impl FpRaw {
-    pub(crate) fn from_be_bytes(bytes: &[u8; 48]) -> Self {
-        let mut le_bytes = bytes.clone();
+    /// Create a new standard form field element.
+    ///
+    /// Only need this because we can't implement `Default` as `const`.
+    pub(crate) const fn new() -> Self {
+        Self([0u64; 6])
+    }
 
-        // Internal representation of scalars is in little-endian order.
-        le_bytes.as_mut_slice().reverse();
-
-        let mut result = FpRaw::default();
-        fp_from_bytes(&mut result, &le_bytes);
-
-        result
+    /// Parse a standard form field element from big-endian bytes.
+    ///
+    /// Returns `None` if the encoded integer is unreduced, i.e. larger than the field modulus.
+    pub(crate) fn from_be_bytes(bytes: &[u8; 48]) -> Result<Self, Error> {
+        if !be_bytes_lt(bytes, &NIST_P384_P_BE_BYTES) {
+            return Err(Error::InvalidFieldElement);
+        }
+        Ok(fpraw_from_be_bytes(bytes))
     }
 }
+
 /// Constant-time modular inverse via the Bernstein–Yang divstep port.
 /// Input/output are in Montgomery form.  Convert out → invert → convert in.
 pub(crate) fn fp_inv(out: &mut Fp, x: &Fp) {

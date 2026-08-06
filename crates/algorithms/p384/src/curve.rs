@@ -270,9 +270,26 @@ impl ProjectivePoint {
         }
     }
 
-        fp_sub(&mut diff_y, &self.y, &y_inf);
+    #[inline]
+    pub fn scalar_mul(&self, sk_bytes: &[u8; 48]) -> Result<Self, Error> {
+        let scalar = SecretKey::try_from(sk_bytes)?;
+        let mut r0 = Self::identity();
+        let mut r1 = *self;
+        let mut swap: u64 = 0;
 
-        !fp_nonzero(&self.x) | !fp_nonzero(&self.z) | fp_nonzero(&diff_y)
+        for byte in scalar.0 {
+            for i in (0..8).rev() {
+                let bit = ((byte >> i) & 1) as u64;
+                swap ^= bit;
+                cswap(swap, &mut r0, &mut r1);
+                swap = bit;
+                r1 = r0.add(&r1);
+                r0 = r0.double();
+            }
+        }
+
+        cswap(swap, &mut r0, &mut r1);
+        Ok(r0)
     }
 }
 
@@ -310,6 +327,25 @@ impl TryFrom<ProjectivePoint> for AffinePoint {
         fp_from_montgomery(&mut affine_point.y, &y);
 
         Ok(affine_point)
+    }
+}
+
+/// Constant-time conditional swap: if `swap` is 1, exchanges `a` and `b` in
+/// place (branch-free, via limb-wise XOR-mask) with no data-dependent memory
+/// access pattern beyond what's inherent to touching both points every call.
+#[inline]
+pub(crate) fn cswap(swap: u64, a: &mut ProjectivePoint, b: &mut ProjectivePoint) {
+    let mask = 0u64.wrapping_sub(swap); // swap in {0,1} -> mask is all-0s or all-1s
+    for i in 0..6 {
+        let t = mask & (a.x.0[i] ^ b.x.0[i]);
+        a.x.0[i] ^= t;
+        b.x.0[i] ^= t;
+        let t = mask & (a.y.0[i] ^ b.y.0[i]);
+        a.y.0[i] ^= t;
+        b.y.0[i] ^= t;
+        let t = mask & (a.z.0[i] ^ b.z.0[i]);
+        a.z.0[i] ^= t;
+        b.z.0[i] ^= t;
     }
 }
 

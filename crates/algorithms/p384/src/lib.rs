@@ -4,6 +4,8 @@ pub(crate) mod field;
 /// Elliptic Curve operations in P-384
 mod curve;
 
+mod constants;
+
 /// ECDH over P-384
 pub mod ecdh;
 

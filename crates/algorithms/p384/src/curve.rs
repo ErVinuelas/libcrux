@@ -6,6 +6,7 @@ use crate::{
     field::{
         fiat_p384_set_one, fp_from_montgomery, fp_inv, fp_nonzero, fp_to_montgomery, Fp, FpRaw,
     },
+    util::be_bytes_lt,
     Error,
 };
 
@@ -26,6 +27,20 @@ pub struct ProjectivePoint {
 
 pub fn compressed_to_raw(compressed_bytes: &[u8], out: &mut [u8; 96]) -> bool {
     todo!("Point decompression is not implemented yet.")
+}
+
+pub struct SecretKey([u8; 48]);
+
+impl TryFrom<&[u8; 48]> for SecretKey {
+    type Error = Error;
+
+    fn try_from(value: &[u8; 48]) -> Result<Self, Self::Error> {
+        if be_bytes_lt(&value, &NIST_P384_CURVE_ORDER_BE_BYTES) {
+            Ok(Self(value.clone()))
+        } else {
+            Err(Error::InvalidSecretKey)
+        }
+    }
 }
 
 impl AffinePoint {

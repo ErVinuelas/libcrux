@@ -20,6 +20,8 @@ pub use curve::ProjectivePoint as PublicKey;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Error {
+    /// Error when deserializing a secret key
+    InvalidSecretKey,
     /// Error when deserializing a field element
     InvalidFieldElement,
     /// Error during deserialization of an uncompressed curve point

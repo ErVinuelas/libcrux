@@ -38,7 +38,7 @@ pub(crate) const NIST_P384_CURVE_ORDER_BE_BYTES: [u8; 48] = [
 
 /// Reverses to fiat's little-endian byte order and outputs in
 /// standard domain. Does NOT validate that the scalar is reduced.
-pub(crate) const fn fpraw_from_be_bytes(be: &[u8; 48]) -> FpRaw {
+const fn fpraw_from_be_bytes(be: &[u8; 48]) -> FpRaw {
     let mut le = [0u8; 48];
     let mut i = 0;
     while i < 48 {
@@ -52,7 +52,7 @@ pub(crate) const fn fpraw_from_be_bytes(be: &[u8; 48]) -> FpRaw {
 
 /// Reverses to fiat's little-endian byte order and outputs in
 /// Montgomery domain. Does NOT validate that the scalar is reduced.
-const fn fp_from_be_bytes(be: &[u8; 48]) -> Fp {
+pub(crate) const fn fp_from_be_bytes(be: &[u8; 48]) -> Fp {
     let mut out = Fp::new();
     let out_raw = fpraw_from_be_bytes(be);
     fp_to_montgomery(&mut out, &out_raw);
@@ -69,3 +69,5 @@ pub(crate) const FP_ONE: Fp = {
     fiat_p384_set_one(&mut out);
     out
 };
+
+pub(crate) const FP_ZERO: Fp = Fp([0u64; 6]);

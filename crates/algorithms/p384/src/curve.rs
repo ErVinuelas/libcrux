@@ -1,20 +1,18 @@
 use crate::{
     constants::{
-        fpraw_from_be_bytes, FP_ONE, NIST_P384_A, NIST_P384_B, NIST_P384_CURVE_ORDER_BE_BYTES,
-        NIST_P384_GX, NIST_P384_GX_BE_BYTES, NIST_P384_GY, NIST_P384_GY_BE_BYTES,
+        FP_ONE, FP_ZERO, NIST_P384_A, NIST_P384_B, NIST_P384_CURVE_ORDER_BE_BYTES, NIST_P384_GX,
+        NIST_P384_GY,
     },
-    field::{
-        fiat_p384_set_one, fp_from_montgomery, fp_inv, fp_nonzero, fp_to_montgomery, Fp, FpRaw,
-    },
+    field::Fp,
     util::be_bytes_lt,
     Error,
 };
 
 /// A point on P-384 in affine representation.
-#[derive(Default)]
-struct AffinePoint {
-    x: FpRaw,
-    y: FpRaw,
+#[derive(Default, Debug)]
+pub(crate) struct AffinePoint {
+    pub(crate) x: Fp,
+    y: Fp,
 }
 
 /// A point on P-384 in projective representation.
@@ -25,6 +23,7 @@ pub struct ProjectivePoint {
     z: Fp,
 }
 
+#[allow(unused)]
 pub fn compressed_to_raw(compressed_bytes: &[u8], out: &mut [u8; 96]) -> bool {
     todo!("Point decompression is not implemented yet.")
 }
@@ -55,26 +54,23 @@ impl AffinePoint {
         let x_bytes = &uncompressed_bytes[1..49];
         let y_bytes = &uncompressed_bytes[49..];
 
-        let x_raw = FpRaw::from_be_bytes(x_bytes.try_into().expect("x_bytes is 48 bytes long"))
+        let x = Fp::from_be_bytes(x_bytes.try_into().expect("x_bytes is 48 bytes long"))
             .map_err(|_| Error::InvalidUncompressed)?;
-        let y_raw = FpRaw::from_be_bytes(y_bytes.try_into().expect("y_bytes is 48 bytes long"))
+        let y = Fp::from_be_bytes(y_bytes.try_into().expect("y_bytes is 48 bytes long"))
             .map_err(|_| Error::InvalidUncompressed)?;
 
-        Ok(AffinePoint { x: x_raw, y: y_raw })
+        Ok(AffinePoint { x, y })
     }
 
     /// Validate the curve equation.
     fn validate(&self) -> bool {
-        let x = Fp::from_raw(&self.x);
-        let y = Fp::from_raw(&self.y);
+        let y_squared = &self.y * &self.y;
 
-        let y_squared = &y * &y;
-
-        let x_cubed = &(&x * &x) * &x;
-        let ax = &x * &NIST_P384_A;
+        let x_cubed = &(&self.x * &self.x) * &self.x;
+        let ax = &self.x * &NIST_P384_A;
         let rhs = &(&x_cubed + &ax) + &NIST_P384_B;
 
-        !fp_nonzero(&(&y_squared - &rhs))
+        (&y_squared - &rhs).is_zero()
     }
 }
 
@@ -251,10 +247,10 @@ impl ProjectivePoint {
 
     /// Any point with Z = 0 represents the point at infinity.
     fn is_point_at_infinity(&self) -> bool {
-        !fp_nonzero(&self.z)
+        self.z.is_zero()
     }
 
-    const fn generator() -> Self {
+    pub const fn generator() -> Self {
         ProjectivePoint {
             x: NIST_P384_GX,
             y: NIST_P384_GY,
@@ -264,9 +260,9 @@ impl ProjectivePoint {
 
     const fn identity() -> Self {
         ProjectivePoint {
-            x: FP_ONE,
+            x: FP_ZERO,
             y: FP_ONE,
-            z: Fp([0u64; 6]),
+            z: FP_ZERO,
         }
     }
 
@@ -295,16 +291,11 @@ impl ProjectivePoint {
 
 impl From<AffinePoint> for ProjectivePoint {
     fn from(value: AffinePoint) -> Self {
-        let mut x = Fp::default();
-        fp_to_montgomery(&mut x, &value.x);
-
-        let mut y = Fp::default();
-        fp_to_montgomery(&mut y, &value.y);
-
-        let mut z = Fp::default();
-        fiat_p384_set_one(&mut z);
-
-        ProjectivePoint { x, y, z }
+        ProjectivePoint {
+            x: value.x,
+            y: value.y,
+            z: FP_ONE,
+        }
     }
 }
 
@@ -316,17 +307,12 @@ impl TryFrom<ProjectivePoint> for AffinePoint {
             return Err(Error::PointAtInfinity);
         }
 
-        let mut z_inv = Fp::default();
-        fp_inv(&mut z_inv, &value.z);
+        let z_inv = value.z.inv();
 
         let x = &value.x * &z_inv;
         let y = &value.y * &z_inv;
 
-        let mut affine_point = AffinePoint::default();
-        fp_from_montgomery(&mut affine_point.x, &x);
-        fp_from_montgomery(&mut affine_point.y, &y);
-
-        Ok(affine_point)
+        Ok(AffinePoint { x, y })
     }
 }
 

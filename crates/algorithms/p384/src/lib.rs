@@ -18,6 +18,8 @@ mod util;
 
 pub use curve::ProjectivePoint as PublicKey;
 
+use crate::curve::{AffinePoint, SecretKey};
+
 #[derive(Copy, Clone, Debug)]
 pub enum Error {
     /// Error when deserializing a secret key
@@ -28,4 +30,16 @@ pub enum Error {
     InvalidUncompressed,
     /// When attempting to convert the point at infinity to affine coordinates
     PointAtInfinity,
+}
+
+pub fn derive_ecdh(sk_bytes: &[u8], pk_bytes: &[u8]) -> Result<[u8; 48], Error> {
+    let sk_bytes: &[u8; 48] = sk_bytes.try_into().map_err(|_| Error::InvalidSecretKey)?;
+
+    // XXX: Match on length for other encodings
+    let pk = PublicKey::from_uncompressed(pk_bytes)?;
+
+    let ecdh = pk.scalar_mul(sk_bytes)?;
+    let ecdh = AffinePoint::try_from(ecdh)?;
+
+    Ok(ecdh.x.to_be_bytes())
 }

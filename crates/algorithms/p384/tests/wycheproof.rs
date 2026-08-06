@@ -1,5 +1,3 @@
-use std::any::type_name_of_val;
-
 use libcrux_kats::wycheproof::{ecdh, TestResult};
 
 fn pad_slice_to_arr(b: &[u8]) -> [u8; 48] {
@@ -34,7 +32,6 @@ fn ecdh_secp384r1() {
             // sk is a 48-byte big endian big integer, so we pad the lower bytes with 0
             let sk_bytes = pad_slice_to_arr(sk);
 
-            let mut pk_bytes = [0; 96];
             if test.public_key.len() == 97 {
                 let decode_result = libcrux_p384::PublicKey::from_uncompressed(&test.public_key);
 
@@ -49,12 +46,6 @@ fn ecdh_secp384r1() {
                     tests_run += 1;
                     continue;
                 }
-
-                // assert!(
-                //     uncompressed_to_raw(&test.public_key, &mut pk_bytes),
-                //     "tc_id: {}, invalid uncompressed public key",
-                //     test.tc_id
-                // );
             } else if test.public_key.len() == 49 {
                 println!("Point decompression not yet implemented, skipping test");
                 continue;
@@ -88,34 +79,32 @@ fn ecdh_secp384r1() {
                 continue;
             }
 
-            // let mut derived = [0u8; 64];
-            // let result = libcrux_p256::P256::derive_ecdh(&mut derived, &pk_bytes, &sk_bytes);
-
-            // match test.result {
-            //     // XXX: In the future, wycheproof might add acceptable test cases which we (want to) reject.
-            //     // This needs to be split then.
-            //     TestResult::Valid | TestResult::Acceptable => {
-            //         assert!(
-            //             result.is_ok(),
-            //             "tc_id {}: expected success or acceptable but ECDH failed",
-            //             test.tc_id,
-            //         );
-            //         // Wycheproof shared secret is just the X coordinate (first 32 bytes)
-            //         assert_eq!(
-            //             test.shared_secret,
-            //             derived[..32],
-            //             "tc_id {}: shared secret mismatch",
-            //             test.tc_id,
-            //         );
-            //     }
-            //     TestResult::Invalid => {
-            //         assert!(
-            //             result.is_err(),
-            //             "tc_id: {}, expected invalid test but ECDH derive succeeded",
-            //             test.tc_id
-            //         );
-            //     }
-            // }
+            let result = libcrux_p384::derive_ecdh(&sk_bytes, &test.public_key);
+            match test.result {
+                // XXX: In the future, wycheproof might add acceptable test cases which we (want to) reject.
+                // This needs to be split then.
+                TestResult::Valid | TestResult::Acceptable => {
+                    assert!(
+                        result.is_ok(),
+                        "tc_id {}: expected success or acceptable but ECDH failed {:?}",
+                        test.tc_id,
+                        result
+                    );
+                    let result = result.unwrap();
+                    assert_eq!(
+                        test.shared_secret, result,
+                        "tc_id {}: shared secret mismatch",
+                        test.tc_id,
+                    );
+                }
+                TestResult::Invalid => {
+                    assert!(
+                        result.is_err(),
+                        "tc_id: {}, expected invalid test but ECDH derive succeeded",
+                        test.tc_id
+                    );
+                }
+            }
             tests_run += 1;
         }
     }
@@ -124,7 +113,10 @@ fn ecdh_secp384r1() {
     //     test_set.number_of_tests, tests_run,
     //     "invalid number of tests run"
     // );
-    println!("Ran {tests_run} ecdh_secp256r1_ecpoint tests",);
+    println!(
+        "Ran {tests_run} / {} ecdh_secp256r1_ecpoint tests",
+        test_set.number_of_tests
+    );
 }
 
 // /// A P-384 Signature

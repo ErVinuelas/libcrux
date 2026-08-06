@@ -12,6 +12,8 @@ pub mod ecdh;
 /// ECDSA over P-384
 pub mod ecdsa;
 
+mod util;
+
 pub use curve::ProjectivePoint as PublicKey;
 
 #[derive(Copy, Clone, Debug)]

@@ -1,3 +1,5 @@
+// XXX: Do not derive Debug, Default, PartialEq on scalars.
+
 /// Base Field Arithmetic for P-384
 pub(crate) mod field;
 

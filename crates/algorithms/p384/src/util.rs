@@ -1,13 +1,25 @@
+//! # Utility functions
+
 /// Big-endian byte-array comparison: is `a < b`? Used both to reject
 /// non-canonical (unreduced) field element encodings and to rejection-sample
 /// private keys against the curve order.
-/// XXX: Need constant-time?
+///
+/// This is not fully constant-time. In particular, it exits early if
+/// `a > b`. This is safe, since when the outcome is `false` the input
+/// will be rejected and thus not considered secret.
 #[inline]
 pub(crate) fn be_bytes_lt(a: &[u8; 48], b: &[u8; 48]) -> bool {
+    let mut check = 0u8;
     for i in 0..48 {
-        if a[i] != b[i] {
-            return a[i] < b[i];
+        if a[i] > b[i] {
+            // For every previous i, we had a[i] <= b[i], so if any of them disagreed,
+            // a[i] was smaller than b[i], thus a < b.
+            return check != 0;
         }
+        check |= a[i] ^ b[i];
     }
-    false
+
+    // For every i, we had a[i] <= b[i], so if any of them disagreed,
+    // a[i] was smaller than b[i], thus a < b.
+    check != 0
 }

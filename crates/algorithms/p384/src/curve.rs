@@ -1,86 +1,59 @@
+//! # Curve Operations
+//!
+//! P-384 ECDH public keys are kept in projective coordinates,
+//! i.e. for a point (x, y) in affine coordinates, we usually work on
+//! its projective representation (X,Y,Z).
+
 use crate::{
-    constants::{
-        FP_ONE, FP_ZERO, NIST_P384_A, NIST_P384_B, NIST_P384_CURVE_ORDER_BE_BYTES, NIST_P384_GX,
-        NIST_P384_GY,
-    },
+    constants::{FP_ONE, FP_ZERO, NIST_P384_B, NIST_P384_GX, NIST_P384_GY},
+    ecdh::SharedSecret,
     field::Fp,
-    util::be_bytes_lt,
     Error,
 };
 
-/// A point on P-384 in affine representation.
-#[derive(Default, Debug)]
-pub(crate) struct AffinePoint {
-    pub(crate) x: Fp,
-    y: Fp,
-}
+pub(crate) mod affine;
 
-/// A point on P-384 in projective representation.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ProjectivePoint {
+pub(crate) mod scalar;
+
+use affine::AffinePoint;
+use scalar::PrivateKey;
+
+/// A P-384 public key.
+#[derive(Clone, Copy)]
+pub struct PublicKey {
     x: Fp,
     y: Fp,
     z: Fp,
 }
 
-#[allow(unused)]
-pub fn compressed_to_raw(compressed_bytes: &[u8], out: &mut [u8; 96]) -> bool {
-    todo!("Point decompression is not implemented yet.")
-}
-
-pub struct SecretKey([u8; 48]);
-
-impl TryFrom<&[u8; 48]> for SecretKey {
-    type Error = Error;
-
-    fn try_from(value: &[u8; 48]) -> Result<Self, Self::Error> {
-        if be_bytes_lt(&value, &NIST_P384_CURVE_ORDER_BE_BYTES) {
-            Ok(Self(value.clone()))
-        } else {
-            Err(Error::InvalidSecretKey)
-        }
+impl From<&PrivateKey> for PublicKey {
+    /// For a given private key `x`, the corresponding public key is
+    /// `xG`, where `G` is the group generator.
+    fn from(value: &PrivateKey) -> Self {
+        PublicKey::generator().scalar_mul(value)
     }
 }
 
-impl AffinePoint {
-    /// Decode an uncompressed encoding of an affine point.
+impl PublicKey {
+    #[inline]
+    /// Implements exception-free projective point doubling for prime order
+    /// short Weierstrass curves.
+    /// Commented numbers indicate steps in algorithm 6 from
     ///
-    /// This function does not validate the curve point.
-    fn from_uncompressed(uncompressed_bytes: &[u8]) -> Result<Self, Error> {
-        if uncompressed_bytes.len() != 97 || uncompressed_bytes[0] != 0x04 {
-            return Err(Error::InvalidUncompressed);
-        }
-
-        let x_bytes = &uncompressed_bytes[1..49];
-        let y_bytes = &uncompressed_bytes[49..];
-
-        let x = Fp::from_be_bytes(x_bytes.try_into().expect("x_bytes is 48 bytes long"))
-            .map_err(|_| Error::InvalidUncompressed)?;
-        let y = Fp::from_be_bytes(y_bytes.try_into().expect("y_bytes is 48 bytes long"))
-            .map_err(|_| Error::InvalidUncompressed)?;
-
-        Ok(AffinePoint { x, y })
-    }
-
-    /// Validate the curve equation.
-    fn validate(&self) -> bool {
-        let y_squared = &self.y * &self.y;
-
-        let x_cubed = &(&self.x * &self.x) * &self.x;
-        let ax = &self.x * &NIST_P384_A;
-        let rhs = &(&x_cubed + &ax) + &NIST_P384_B;
-
-        (&y_squared - &rhs).is_zero()
-    }
-}
-
-impl ProjectivePoint {
+    /// Joost Renes, Craig Costello, and Lejla Batina. 2016. Complete Addition
+    /// Formulas for Prime Order Elliptic Curves. In Proceedings, Part I, of
+    /// the 35th Annual International Conference on Advances in Cryptology ---
+    /// EUROCRYPT 2016 - Volume 9665. Springer-Verlag, Berlin, Heidelberg,
+    /// 403–428. [link][1],[preprint][2]
+    ///
+    /// [1]: https://dl.acm.org/doi/10.5555/3081770.3081786
+    /// [2]: https://eprint.iacr.org/2015/1060
     fn double(&self) -> Self {
-        let ProjectivePoint { x, y, z } = &self;
+        let PublicKey { x, y, z } = &self;
 
-        let mut t0 = x * x; // 1.
-        let t1 = y * y; // 2.
-        let mut t2 = z * z; // 3.
+        let mut t0 = x.square(); // 1.
+        let t1 = y.square(); // 2.
+        let mut t2 = z.square(); // 3.
 
         let mut t3 = x * y; // 4.
         t3 = &t3 + &t3; // 5.
@@ -124,7 +97,7 @@ impl ProjectivePoint {
 
         z3 = &z3 + &z3; // 34.
 
-        ProjectivePoint {
+        PublicKey {
             x: x3,
             y: y3,
             z: z3,
@@ -133,15 +106,25 @@ impl ProjectivePoint {
 
     /// Complete point addition for prime order short Weierstrass
     /// curves with a = -3.
-    /// Algorithm 4 from [Renes, Costello, and Batina].
+    /// Commented numbers indicate steps in algorithm 4 from
+    ///
+    /// Joost Renes, Craig Costello, and Lejla Batina. 2016. Complete Addition
+    /// Formulas for Prime Order Elliptic Curves. In Proceedings, Part I, of
+    /// the 35th Annual International Conference on Advances in Cryptology ---
+    /// EUROCRYPT 2016 - Volume 9665. Springer-Verlag, Berlin, Heidelberg,
+    /// 403–428. [link][1],[preprint][2]
+    ///
+    /// [1]: https://dl.acm.org/doi/10.5555/3081770.3081786
+    /// [2]: https://eprint.iacr.org/2015/1060
+    #[inline]
     fn add(&self, other: &Self) -> Self {
-        let ProjectivePoint {
+        let PublicKey {
             x: x1,
             y: y1,
             z: z1,
         } = &self;
 
-        let ProjectivePoint {
+        let PublicKey {
             x: x2,
             y: y2,
             z: z2,
@@ -205,44 +188,57 @@ impl ProjectivePoint {
 
         z3 += t1; // 43.
 
-        ProjectivePoint {
+        PublicKey {
             x: x3,
             y: y3,
             z: z3,
         }
     }
 
-    /// Convert a point in uncompressed encoding into a projective curve point.
+    /// Read the SEC1 compressed encoding of a public key from the input
+    /// buffer.
     ///
-    /// The uncompressed encoding of a curve point P is a 97-byte slice starting with
-    /// byte `0x04`, followed by 48-byte encodings of affine point
-    /// coordinates x_P and y_P:
-    ///
-    ///   P_uncompressed = `0x04` || X || Y
-    ///
-    /// where X = FE2OS(x_P) and Y = FE2OS(y_P) are the encodings of curve
-    /// coordinates as ocetet strings. The raw encoding is a 96-byte
-    /// array containing the encodings of affine point coordinates X and
-    /// Y:
-    ///
-    ///   P_raw = X || Y
-    ///
-    /// If this function returns `true` the content of `out` will be the
-    /// raw encoding of a valid curve point that was encoded in
-    /// `uncompressed_bytes`, in particular, the function validates that
-    ///
-    ///   y_P^2 = x_P^3 + ax_P + b
-    ///
-    /// where a = -3 and b is the curve parameter for NIST P-384 as
-    /// defined in FIPS 186-4.
+    /// Returns an error if the buffer does not contain a valid encoding of a
+    /// point on P-384.
     pub fn from_uncompressed(uncompressed_bytes: &[u8]) -> Result<Self, Error> {
-        let p_affine = AffinePoint::from_uncompressed(uncompressed_bytes)?;
+        let p_affine = AffinePoint::from_uncompressed(uncompressed_bytes)
+            .map_err(|_| Error::InvalidPublicKey)?;
 
         if p_affine.validate() {
             Ok(p_affine.into())
         } else {
-            Err(Error::InvalidUncompressed)
+            Err(Error::InvalidPublicKey)
         }
+    }
+
+    /// Write the SEC1 uncompressed encoding of the public key into the
+    /// provided buffer `out`.
+    pub fn to_uncompressed(self, out: &mut [u8; 97]) {
+        out[0] = 0x04;
+        out[1..49].copy_from_slice(&self.x.to_be_bytes());
+        out[49..].copy_from_slice(&self.y.to_be_bytes());
+    }
+
+    /// Write the SEC1 compressed encoding of the public key into the provided
+    /// buffer `out`.
+    pub fn to_compressed(self, out: &mut [u8; 49]) {
+        if self.y.to_be_bytes()[0] & 1 == 1 {
+            out[0] = 0x03;
+        } else {
+            out[0] = 0x02;
+        }
+        out[1..49].copy_from_slice(&self.x.to_be_bytes());
+    }
+
+    /// Read the SEC1 compressed encoding of a public key from the input
+    /// buffer.
+    ///
+    /// Returns an error if the buffer does not contain a valid encoding of a
+    /// point on P-384.
+    pub fn from_compressed(compressed_bytes: &[u8]) -> Result<Self, Error> {
+        AffinePoint::from_compressed(compressed_bytes)
+            .map(|p| p.into())
+            .map_err(|_| Error::InvalidPublicKey)
     }
 
     /// Any point with Z = 0 represents the point at infinity.
@@ -250,16 +246,18 @@ impl ProjectivePoint {
         self.z.is_zero()
     }
 
+    /// Returns the group generator of P-384.
     pub const fn generator() -> Self {
-        ProjectivePoint {
+        PublicKey {
             x: NIST_P384_GX,
             y: NIST_P384_GY,
             z: FP_ONE,
         }
     }
 
+    /// Returns the canonical additive identity for P-384, i.e. the point at infinity.
     const fn identity() -> Self {
-        ProjectivePoint {
+        PublicKey {
             x: FP_ZERO,
             y: FP_ONE,
             z: FP_ZERO,
@@ -267,8 +265,10 @@ impl ProjectivePoint {
     }
 
     #[inline]
-    pub fn scalar_mul(&self, sk_bytes: &[u8; 48]) -> Result<Self, Error> {
-        let scalar = SecretKey::try_from(sk_bytes)?;
+    /// Perform a scalar multiplication of the public key and a given scalar.
+    ///
+    /// Uses a simple Montgomery ladder internally.
+    fn scalar_mul(&self, scalar: &PrivateKey) -> Self {
         let mut r0 = Self::identity();
         let mut r1 = *self;
         let mut swap: u64 = 0;
@@ -285,13 +285,38 @@ impl ProjectivePoint {
         }
 
         cswap(swap, &mut r0, &mut r1);
-        Ok(r0)
+        r0
+    }
+
+    /// Derives an ECDH shared secret from the public key and a scalar.
+    pub fn ecdh(&self, scalar: &PrivateKey) -> SharedSecret {
+        SharedSecret(self.scalar_mul(scalar))
+    }
+
+    /// Attempt to convert the public key (a projective point) to
+    /// affine coordinates.
+    ///
+    /// This is not possible, if the input point is the point at
+    /// infinity.
+    pub(crate) fn to_affine(self) -> Option<AffinePoint> {
+        if self.is_point_at_infinity() {
+            return None;
+        }
+
+        let z_inv = self.z.inv();
+
+        let x = &self.x * &z_inv;
+        let y = &self.y * &z_inv;
+
+        Some(AffinePoint { x, y })
     }
 }
 
-impl From<AffinePoint> for ProjectivePoint {
+impl From<AffinePoint> for PublicKey {
+    /// A canonical projective point for a given affine point (X, Y) is the
+    /// point (X, Y, 1).
     fn from(value: AffinePoint) -> Self {
-        ProjectivePoint {
+        PublicKey {
             x: value.x,
             y: value.y,
             z: FP_ONE,
@@ -299,20 +324,17 @@ impl From<AffinePoint> for ProjectivePoint {
     }
 }
 
-impl TryFrom<ProjectivePoint> for AffinePoint {
+impl TryFrom<&[u8]> for PublicKey {
     type Error = Error;
 
-    fn try_from(value: ProjectivePoint) -> Result<Self, Self::Error> {
-        if value.is_point_at_infinity() {
-            return Err(Error::PointAtInfinity);
+    /// Attempt decoding if input length matches either compressed or
+    /// uncompressed encoding lengths.
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        match value.len() {
+            49 => Self::from_compressed(value),
+            97 => Self::from_uncompressed(value),
+            _ => Err(Error::InvalidPublicKey),
         }
-
-        let z_inv = value.z.inv();
-
-        let x = &value.x * &z_inv;
-        let y = &value.y * &z_inv;
-
-        Ok(AffinePoint { x, y })
     }
 }
 
@@ -320,7 +342,7 @@ impl TryFrom<ProjectivePoint> for AffinePoint {
 /// place (branch-free, via limb-wise XOR-mask) with no data-dependent memory
 /// access pattern beyond what's inherent to touching both points every call.
 #[inline]
-pub(crate) fn cswap(swap: u64, a: &mut ProjectivePoint, b: &mut ProjectivePoint) {
+fn cswap(swap: u64, a: &mut PublicKey, b: &mut PublicKey) {
     let mask = 0u64.wrapping_sub(swap); // swap in {0,1} -> mask is all-0s or all-1s
     for i in 0..6 {
         let t = mask & (a.x.0[i] ^ b.x.0[i]);
@@ -333,18 +355,4 @@ pub(crate) fn cswap(swap: u64, a: &mut ProjectivePoint, b: &mut ProjectivePoint)
         a.z.0[i] ^= t;
         b.z.0[i] ^= t;
     }
-}
-
-#[test]
-fn double_add() {
-    let g = ProjectivePoint::generator();
-
-    let addition = g.add(&g);
-    let doubling = g.double();
-
-    assert_eq!(
-        addition, doubling,
-        "Points disagree\n Addition - {:#?}\n Doubling - {:#?}",
-        addition, doubling
-    );
 }

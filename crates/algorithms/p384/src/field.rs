@@ -18,12 +18,7 @@ use p384_64::*;
 pub(crate) use p384_64::{
     fiat_p384_montgomery_domain_field_element as Fp,
     fiat_p384_non_montgomery_domain_field_element as FpRaw, fiat_p384_nonzero, fiat_p384_set_one,
-};
-
-use crate::{
-    constants::{fp_from_be_bytes, FP_ZERO, NIST_P384_P_BE_BYTES},
-    util::be_bytes_lt,
-    Error,
+    fiat_p384_to_bytes,
 };
 
 mod safegcd;
@@ -73,7 +68,7 @@ pub(crate) const fn fp_opp(out: &mut Fp, x: &Fp) {
     fiat_p384_opp(out, x)
 }
 #[inline]
-pub(crate) const fn fp_from_bytes(out: &mut FpRaw, bs: &[u8; 384 / 8 + (384 % 8 > 0) as usize]) {
+pub(crate) const fn fp_from_bytes(out: &mut FpRaw, bs: &[u8; 384 / 8]) {
     fiat_p384_from_bytes(&mut out.0, bs)
 }
 #[inline]
@@ -90,117 +85,6 @@ pub(crate) fn fp_nonzero(x: &Fp) -> bool {
     let mut test = 0;
     fiat_p384_nonzero(&mut test, &x.0);
     test != 0
-}
-
-use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
-
-impl Add<&Fp> for &Fp {
-    type Output = Fp;
-
-    fn add(self, rhs: &Fp) -> Self::Output {
-        let mut out = Fp::new();
-        fp_add(&mut out, self, rhs);
-        out
-    }
-}
-
-impl Mul<&Fp> for &Fp {
-    type Output = Fp;
-
-    fn mul(self, rhs: &Fp) -> Self::Output {
-        let mut out = Fp::new();
-        fp_mul(&mut out, self, rhs);
-        out
-    }
-}
-impl Sub<&Fp> for &Fp {
-    type Output = Fp;
-
-    fn sub(self, rhs: &Fp) -> Self::Output {
-        let mut out = Fp::new();
-        fp_sub(&mut out, self, rhs);
-        out
-    }
-}
-impl Neg for &Fp {
-    type Output = Fp;
-
-    fn neg(self) -> Self::Output {
-        let mut out = Fp::new();
-        fp_opp(&mut out, self);
-        out
-    }
-}
-impl AddAssign for Fp {
-    fn add_assign(&mut self, rhs: Self) {
-        let mut tmp = Fp::new();
-        fp_add(&mut tmp, &self, &rhs);
-        *self = tmp;
-    }
-}
-
-impl SubAssign for Fp {
-    fn sub_assign(&mut self, rhs: Self) {
-        let mut tmp = Fp::new();
-        fp_sub(&mut tmp, &self, &rhs);
-        *self = tmp;
-    }
-}
-
-impl MulAssign for Fp {
-    fn mul_assign(&mut self, rhs: Self) {
-        let mut tmp = Fp::new();
-        fp_mul(&mut tmp, &self, &rhs);
-        *self = tmp;
-    }
-}
-
-impl Fp {
-    pub(crate) const fn new() -> Self {
-        FP_ZERO
-    }
-
-    /// Parse a Montgomery standard form field element from big-endian bytes.
-    ///
-    /// Returns `None` if the encoded integer is unreduced,
-    /// i.e. larger than the field modulus.
-    pub(crate) fn from_be_bytes(bytes: &[u8; 48]) -> Result<Self, Error> {
-        if !be_bytes_lt(bytes, &NIST_P384_P_BE_BYTES) {
-            return Err(Error::InvalidFieldElement);
-        }
-        Ok(fp_from_be_bytes(bytes))
-    }
-
-    /// Converts a Montgomery-domain field element to big-endian
-    /// bytes.
-    #[inline]
-    pub(crate) fn to_be_bytes(&self) -> [u8; 48] {
-        let mut raw = FpRaw::new();
-        fiat_p384_from_montgomery(&mut raw, self);
-        let mut le = [0u8; 48];
-        fiat_p384_to_bytes(&mut le, &raw.0);
-        le.reverse();
-        le
-    }
-
-    pub(crate) fn inv(&self) -> Self {
-        let mut out = Fp::new();
-        fp_inv(&mut out, self);
-        out
-    }
-
-    pub(crate) fn is_zero(&self) -> bool {
-        !fp_nonzero(&self)
-    }
-}
-
-impl FpRaw {
-    /// Create a new standard form field element.
-    ///
-    /// Only need this because we can't implement `Default` as `const`.
-    pub(crate) const fn new() -> Self {
-        Self([0u64; 6])
-    }
 }
 
 /// Constant-time modular inverse via the Bernstein–Yang divstep port.

@@ -22,6 +22,7 @@
 
 #![allow(unused_parens)]
 #![allow(non_camel_case_types)]
+#![allow(clippy::all)]
 
 /// Since `Index` and `IndexMut` aren't callable in `const` contexts yet, this helper type helps unify
 /// arrays and user-defined array-wrapper types into a single type which can be indexed in `const`
@@ -58,7 +59,7 @@ pub(crate) type fiat_p384_i2 = i8;
 /** ```text */
 /** Bounds: [[0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff]] */
 /** ``` */
-#[derive(Clone, Copy, Default, Debug, PartialEq)]
+#[derive(Clone, Copy)]
 pub(crate) struct fiat_p384_montgomery_domain_field_element(pub(crate) [u64; 6]);
 
 impl core::ops::Index<usize> for fiat_p384_montgomery_domain_field_element {

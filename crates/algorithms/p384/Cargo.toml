@@ -10,6 +10,14 @@ repository.workspace = true
 readme.workspace = true
 
 [dependencies]
+rand = { workspace = true, default-features = false, optional = true }
 
 [dev-dependencies]
 libcrux-kats = { workspace = true, features = ["ecdh"] }
+
+[features]
+# Provides private key generation API
+rand = ["dep:rand"]
+
+[package.metadata.docs.rs]
+all-features = true

@@ -19,5 +19,5 @@ Please refer to the documentation provided in the
 [fiat-crypto][fiat-crypto] and [AU-Curves][aucurves] repositories for
 details on the verification of the vendored code.
 
-[fiat-crypto]: [https://github.com/spitters/fiat-crypto]
-[aucurves]: [https://github.com/AU-COBRA/AUCurves]
+[fiat-crypto]: https://github.com/spitters/fiat-crypto
+[aucurves]: https://github.com/AU-COBRA/AUCurves

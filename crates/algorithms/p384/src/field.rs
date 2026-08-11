@@ -13,6 +13,7 @@
 
 #![allow(non_snake_case, non_camel_case_types)]
 
+#[rustfmt::skip]
 mod p384_64;
 use p384_64::*;
 pub(crate) use p384_64::{

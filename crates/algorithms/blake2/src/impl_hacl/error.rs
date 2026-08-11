@@ -1,6 +1,3 @@
-#[cfg(feature = "alloc")]
-extern crate alloc;
-
 /// Indicates an error has occurred
 #[derive(Debug)]
 pub enum Error {
@@ -16,9 +13,8 @@ pub enum Error {
     Unexpected,
 }
 
-#[cfg(feature = "alloc")]
-impl alloc::fmt::Display for Error {
-    fn fmt(&self, f: &mut alloc::fmt::Formatter<'_>) -> alloc::fmt::Result {
+impl core::fmt::Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let text = match self {
             Error::InvalidKeyLength => "The used key length is invalid.",
             Error::InvalidDigestLength => "The used digest length is invalid.",
@@ -31,5 +27,4 @@ impl alloc::fmt::Display for Error {
     }
 }
 
-#[cfg(feature = "alloc")]
 impl core::error::Error for Error {}

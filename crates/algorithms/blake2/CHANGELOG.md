@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- [#63](https://github.com/celabshq/libcrux/pull/63): Remove default feature `std` and introduce optional feature `alloc` for error types that implement `core::error::Error`
+- [#63](https://github.com/celabshq/libcrux/pull/63): Remove default feature `std` and remove all heap allocations
 
 ## [0.0.8] (2026-07-15)
 

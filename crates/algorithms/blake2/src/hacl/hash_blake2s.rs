@@ -602,6 +602,9 @@ pub struct state_t {
     pub total_len: u64,
 }
 
+// NOTE: This function does not allocate on the heap, as the name
+// might suggest. We keep the name that was provided by HACL* to make
+// it easier to relate our code to the original F*.
 pub(crate) fn malloc_raw<'a>(
     kk: crate::hacl::hash_blake2b::index,
     key: crate::hacl::hash_blake2b::params_and_key<'a>,

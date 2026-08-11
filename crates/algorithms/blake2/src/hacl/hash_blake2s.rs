@@ -634,10 +634,8 @@ pub(crate) fn malloc_raw<'a>(
             let kk2: u32 = i.key_length as u32;
             let k·: &[u8] = key.snd;
             if kk2 != 0u32 {
-                let zero_block = [0u8; 64];
                 let sub_b: (&mut [u8], &mut [u8]) = buf.split_at_mut(kk2 as usize);
-                (sub_b.1[0usize..64u32.wrapping_sub(kk2) as usize])
-                    .copy_from_slice(&zero_block[0..64u32.wrapping_sub(kk2) as usize]);
+                (sub_b.1[0usize..64u32.wrapping_sub(kk2) as usize]).fill(0);
                 ((&mut buf)[0usize..kk2 as usize]).copy_from_slice(&k·[0usize..kk2 as usize])
             };
             let pv: crate::hacl::hash_blake2b::blake2_params = p[0usize];
@@ -776,10 +774,8 @@ fn reset_raw<'a>(
             let kk2: u32 = i1.key_length as u32;
             let k·1: &[u8] = key.snd;
             if kk2 != 0u32 {
-                let zero_block = [0u8; 64];
                 let sub_b: (&mut [u8], &mut [u8]) = buf.split_at_mut(kk2 as usize);
-                (sub_b.1[0usize..64u32.wrapping_sub(kk2) as usize])
-                    .copy_from_slice(&zero_block[0..64u32.wrapping_sub(kk2) as usize]);
+                (sub_b.1[0usize..64u32.wrapping_sub(kk2) as usize]).fill(0);
                 (buf[0usize..kk2 as usize]).copy_from_slice(&k·1[0usize..kk2 as usize])
             };
             let pv: crate::hacl::hash_blake2b::blake2_params = p[0usize];

@@ -33,10 +33,10 @@ impl PrivateKey {
     pub fn generate(rng: &mut impl TryCryptoRng) -> Result<Self, RandomnessError> {
         let mut bytes = [0u8; 48];
         let mut attempts = 0;
-        rng.try_fill_bytes(&mut bytes)
-            .map_err(|_| RandomnessError)?;
 
         while attempts < SCALAR_REJ_SAMPLING_BOUND {
+            rng.try_fill_bytes(&mut bytes)
+                .map_err(|_| RandomnessError)?;
             let res = Self::try_from(bytes.as_slice());
 
             if res.is_ok() {

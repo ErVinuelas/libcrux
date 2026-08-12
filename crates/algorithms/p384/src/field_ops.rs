@@ -168,7 +168,7 @@ impl Fp {
 
         // This is safe, assuming the underlying operations `fp_sub`
         // and `fp_nonzero` are constant-time.
-        if (&acc.square() - &self).is_zero() {
+        if (&acc.square() - self).is_zero() {
             Some(acc)
         } else {
             None

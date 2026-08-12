@@ -1,12 +1,13 @@
+//! # P-384 Private Keys
+//!
+//! Private keys are field elements in Fp which are bounded by the
+//! curve order of P-384.
+
 #[cfg(feature = "rand")]
 use rand::TryCryptoRng;
 
 #[cfg(feature = "rand")]
-/// # P-384 Private Keys
-///
-/// Private keys are field elements in Fp which are bounded by the
-/// curve order of P-384.
-use crate::Error;
+use crate::RandomnessError;
 use crate::{
     constants::NIST_P384_CURVE_ORDER_BE_BYTES,
     util::{be_bytes_lt, be_bytes_nonzero},
@@ -29,27 +30,27 @@ impl PrivateKey {
     /// Performs rejection sampling internally, and may return an error if
     /// rejection sampling does not succeed in a particular number of
     /// attempts, indicating a major failure of randomness generation.
-    pub fn generate(rng: &mut impl TryCryptoRng) -> Result<Self, Error> {
+    pub fn generate(rng: &mut impl TryCryptoRng) -> Result<Self, RandomnessError> {
         let mut bytes = [0u8; 48];
         let mut attempts = 0;
         rng.try_fill_bytes(&mut bytes)
-            .map_err(|_| Error::RandomnessError)?;
+            .map_err(|_| RandomnessError)?;
 
         while attempts < SCALAR_REJ_SAMPLING_BOUND {
             let res = Self::try_from(bytes.as_slice());
 
             if res.is_ok() {
-                return res;
+                return res.map_err(|_| RandomnessError);
             } else {
                 attempts += 1
             }
         }
-        Err(Error::RandomnessError)
+        Err(RandomnessError)
     }
 }
 
 impl TryFrom<&[u8]> for PrivateKey {
-    type Error = crate::Error;
+    type Error = crate::EcdhError;
 
     /// A valid SEC1 encoding of a P-384 private key is a 48 byte
     /// big-endian integer that is less than the P-384 curve order.

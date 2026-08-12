@@ -6,35 +6,24 @@
 
 use crate::{
     constants::{FP_ONE, FP_ZERO, NIST_P384_B, NIST_P384_GX, NIST_P384_GY},
-    ecdh::SharedSecret,
     field::Fp,
-    Error,
 };
 
 pub(crate) mod affine;
 
-pub(crate) mod scalar;
+// pub(crate) mod scalar;
 
 use affine::AffinePoint;
-use scalar::PrivateKey;
 
 /// A P-384 public key.
 #[derive(Clone, Copy)]
-pub struct PublicKey {
+pub(crate) struct ProjectivePoint {
     x: Fp,
     y: Fp,
     z: Fp,
 }
 
-impl From<&PrivateKey> for PublicKey {
-    /// For a given private key `x`, the corresponding public key is
-    /// `xG`, where `G` is the group generator.
-    fn from(value: &PrivateKey) -> Self {
-        PublicKey::generator().scalar_mul(value)
-    }
-}
-
-impl PublicKey {
+impl ProjectivePoint {
     #[inline]
     /// Implements exception-free projective point doubling for prime order
     /// short Weierstrass curves.
@@ -49,7 +38,7 @@ impl PublicKey {
     /// [1]: https://dl.acm.org/doi/10.5555/3081770.3081786
     /// [2]: https://eprint.iacr.org/2015/1060
     fn double(&self) -> Self {
-        let PublicKey { x, y, z } = &self;
+        let ProjectivePoint { x, y, z } = &self;
 
         let mut t0 = x.square(); // 1.
         let t1 = y.square(); // 2.
@@ -97,7 +86,7 @@ impl PublicKey {
 
         z3 = &z3 + &z3; // 34.
 
-        PublicKey {
+        ProjectivePoint {
             x: x3,
             y: y3,
             z: z3,
@@ -118,13 +107,13 @@ impl PublicKey {
     /// [2]: https://eprint.iacr.org/2015/1060
     #[inline]
     fn add(&self, other: &Self) -> Self {
-        let PublicKey {
+        let ProjectivePoint {
             x: x1,
             y: y1,
             z: z1,
         } = &self;
 
-        let PublicKey {
+        let ProjectivePoint {
             x: x2,
             y: y2,
             z: z2,
@@ -188,57 +177,11 @@ impl PublicKey {
 
         z3 += t1; // 43.
 
-        PublicKey {
+        ProjectivePoint {
             x: x3,
             y: y3,
             z: z3,
         }
-    }
-
-    /// Read the SEC1 compressed encoding of a public key from the input
-    /// buffer.
-    ///
-    /// Returns an error if the buffer does not contain a valid encoding of a
-    /// point on P-384.
-    pub fn from_uncompressed(uncompressed_bytes: &[u8]) -> Result<Self, Error> {
-        let p_affine = AffinePoint::from_uncompressed(uncompressed_bytes)
-            .map_err(|_| Error::InvalidPublicKey)?;
-
-        if p_affine.validate() {
-            Ok(p_affine.into())
-        } else {
-            Err(Error::InvalidPublicKey)
-        }
-    }
-
-    /// Write the SEC1 uncompressed encoding of the public key into the
-    /// provided buffer `out`.
-    pub fn to_uncompressed(self, out: &mut [u8; 97]) {
-        out[0] = 0x04;
-        out[1..49].copy_from_slice(&self.x.to_be_bytes());
-        out[49..].copy_from_slice(&self.y.to_be_bytes());
-    }
-
-    /// Write the SEC1 compressed encoding of the public key into the provided
-    /// buffer `out`.
-    pub fn to_compressed(self, out: &mut [u8; 49]) {
-        if self.y.to_be_bytes()[0] & 1 == 1 {
-            out[0] = 0x03;
-        } else {
-            out[0] = 0x02;
-        }
-        out[1..49].copy_from_slice(&self.x.to_be_bytes());
-    }
-
-    /// Read the SEC1 compressed encoding of a public key from the input
-    /// buffer.
-    ///
-    /// Returns an error if the buffer does not contain a valid encoding of a
-    /// point on P-384.
-    pub fn from_compressed(compressed_bytes: &[u8]) -> Result<Self, Error> {
-        AffinePoint::from_compressed(compressed_bytes)
-            .map(|p| p.into())
-            .map_err(|_| Error::InvalidPublicKey)
     }
 
     /// Any point with Z = 0 represents the point at infinity.
@@ -248,7 +191,7 @@ impl PublicKey {
 
     /// Returns the group generator of P-384.
     pub const fn generator() -> Self {
-        PublicKey {
+        ProjectivePoint {
             x: NIST_P384_GX,
             y: NIST_P384_GY,
             z: FP_ONE,
@@ -257,7 +200,7 @@ impl PublicKey {
 
     /// Returns the canonical additive identity for P-384, i.e. the point at infinity.
     const fn identity() -> Self {
-        PublicKey {
+        ProjectivePoint {
             x: FP_ZERO,
             y: FP_ONE,
             z: FP_ZERO,
@@ -265,15 +208,16 @@ impl PublicKey {
     }
 
     #[inline]
-    /// Perform a scalar multiplication of the public key and a given scalar.
+    /// Perform a scalar multiplication of the public key and a given
+    /// scalar, represented as a big endian byte array.
     ///
     /// Uses a simple Montgomery ladder internally.
-    fn scalar_mul(&self, scalar: &PrivateKey) -> Self {
+    pub(crate) fn scalar_mul(&self, scalar: &[u8; 48]) -> Self {
         let mut r0 = Self::identity();
         let mut r1 = *self;
         let mut swap: u64 = 0;
 
-        for byte in scalar.0 {
+        for byte in scalar {
             for i in (0..8).rev() {
                 let bit = ((byte >> i) & 1) as u64;
                 swap ^= bit;
@@ -286,11 +230,6 @@ impl PublicKey {
 
         cswap(swap, &mut r0, &mut r1);
         r0
-    }
-
-    /// Derives an ECDH shared secret from the public key and a scalar.
-    pub fn ecdh(&self, scalar: &PrivateKey) -> SharedSecret {
-        SharedSecret(self.scalar_mul(scalar))
     }
 
     /// Attempt to convert the public key (a projective point) to
@@ -312,37 +251,22 @@ impl PublicKey {
     }
 }
 
-impl From<AffinePoint> for PublicKey {
+impl From<AffinePoint> for ProjectivePoint {
     /// A canonical projective point for a given affine point (X, Y) is the
     /// point (X, Y, 1).
     fn from(value: AffinePoint) -> Self {
-        PublicKey {
+        ProjectivePoint {
             x: value.x,
             y: value.y,
             z: FP_ONE,
         }
     }
 }
-
-impl TryFrom<&[u8]> for PublicKey {
-    type Error = Error;
-
-    /// Attempt decoding if input length matches either compressed or
-    /// uncompressed encoding lengths.
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        match value.len() {
-            49 => Self::from_compressed(value),
-            97 => Self::from_uncompressed(value),
-            _ => Err(Error::InvalidPublicKey),
-        }
-    }
-}
-
 /// Constant-time conditional swap: if `swap` is 1, exchanges `a` and `b` in
 /// place (branch-free, via limb-wise XOR-mask) with no data-dependent memory
 /// access pattern beyond what's inherent to touching both points every call.
 #[inline]
-fn cswap(swap: u64, a: &mut PublicKey, b: &mut PublicKey) {
+fn cswap(swap: u64, a: &mut ProjectivePoint, b: &mut ProjectivePoint) {
     let mask = 0u64.wrapping_sub(swap); // swap in {0,1} -> mask is all-0s or all-1s
     for i in 0..6 {
         let t = mask & (a.x.0[i] ^ b.x.0[i]);

@@ -44,16 +44,6 @@ impl AffinePoint {
         Ok(AffinePoint { x, y })
     }
 
-    /// Validate the curve equation.
-    ///
-    /// That is, check whether Y^2 = X^3 + aX + b.
-    pub(crate) fn validate(&self) -> bool {
-        let y_squared = self.y.square();
-        let rhs = self.x.weierstrass_rhs();
-
-        (&y_squared - &rhs).is_zero()
-    }
-
     /// Read the SEC1 compressed encoding of an affine point from the input
     /// buffer.
     ///
@@ -99,5 +89,34 @@ impl AffinePoint {
         } else {
             Err(InternalError::Compressed)
         }
+    }
+
+    /// Write the SEC1 uncompressed encoding of the affine point into the
+    /// provided buffer `out`.
+    pub(crate) fn to_uncompressed(&self, out: &mut [u8; 97]) {
+        out[0] = 0x04;
+        out[1..49].copy_from_slice(&self.x.to_be_bytes());
+        out[49..].copy_from_slice(&self.y.to_be_bytes());
+    }
+
+    /// Write the SEC1 compressed encoding of the affine point into the provided
+    /// buffer `out`.
+    pub(crate) fn to_compressed(&self, out: &mut [u8; 49]) {
+        if self.y.is_odd() {
+            out[0] = 0x03;
+        } else {
+            out[0] = 0x02;
+        }
+        out[1..49].copy_from_slice(&self.x.to_be_bytes());
+    }
+
+    /// Validate the curve equation.
+    ///
+    /// That is, check whether Y^2 = X^3 + aX + b.
+    pub(crate) fn validate(&self) -> bool {
+        let y_squared = self.y.square();
+        let rhs = self.x.weierstrass_rhs();
+
+        (&y_squared - &rhs).is_zero()
     }
 }

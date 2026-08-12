@@ -23,3 +23,12 @@ pub(crate) fn be_bytes_lt(a: &[u8; 48], b: &[u8; 48]) -> bool {
     // a[i] was smaller than b[i], thus a < b.
     check != 0
 }
+
+#[inline]
+pub(crate) fn be_bytes_nonzero(x: &[u8; 48]) -> bool {
+    let mut check = 0u8;
+    for byte in x {
+        check |= *byte;
+    }
+    check != 0
+}

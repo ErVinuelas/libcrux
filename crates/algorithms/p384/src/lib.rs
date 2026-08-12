@@ -20,7 +20,7 @@
 //! // or derive the exported shared secret directly
 //! let shared_secret_direct = libcrux_p384::derive_ecdh(sk_bytes, pk_bytes).unwrap();
 //!
-//! assert_eq!(shared_secret_direct, shared_secret.to_bytes().unwrap());
+//! assert_eq!(shared_secret_direct, shared_secret.to_bytes());
 //! ```
 //! ## Cargo Features
 //!
@@ -44,21 +44,21 @@ mod curve;
 mod ecdh;
 mod util;
 
-pub use curve::{scalar::PrivateKey, PublicKey};
-pub use ecdh::SharedSecret;
+pub use ecdh::{private::PrivateKey, PublicKey, SharedSecret};
 
 #[derive(Copy, Clone, Debug)]
 /// Errors that can occur during P-384 operations.
-pub enum Error {
+pub enum EcdhError {
     /// Error when deserializing a private key
     InvalidPrivateKey,
     /// Error when deserializing a public key
     InvalidPublicKey,
-    /// Error in randomness generation (feature `rand` only)
-    RandomnessError,
-    /// Internal error
-    InternalError,
 }
+
+#[cfg(feature = "rand")]
+#[derive(Copy, Clone, Debug)]
+/// Error due to insufficient randomness during key generation.
+pub struct RandomnessError;
 
 /// Internal error type for debugging
 pub(crate) enum InternalError {
@@ -69,15 +69,9 @@ pub(crate) enum InternalError {
 
 /// Attempt to derive an P-384 ECDH shared secret, given SEC1
 /// encodings of private and public keys.
-pub fn derive_ecdh(sk_bytes: &[u8], pk_bytes: &[u8]) -> Result<[u8; 48], Error> {
+pub fn derive_ecdh(sk_bytes: &[u8], pk_bytes: &[u8]) -> Result<[u8; 48], EcdhError> {
     let sk = PrivateKey::try_from(sk_bytes)?;
     let pk = PublicKey::try_from(pk_bytes)?;
 
-    let ecdh = pk.ecdh(&sk);
-
-    if let Some(shared_secret) = ecdh.to_bytes() {
-        Ok(shared_secret)
-    } else {
-        Err(Error::InternalError)
-    }
+    Ok(pk.ecdh(&sk).to_bytes())
 }

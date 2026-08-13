@@ -7,15 +7,16 @@
 //! coordinates to ensure we can never have the point at infinity for a
 //! public key. Validity requirements for public keys are:
 //! 0. Their encoding is either
+//!
 //!    - SEC1 uncompressed: 97 bytes where the byte at index 0 is `0x04`
-//!    and the bytes at indices 1..49 and 49..97 encode the affine X and Y
-//!    coordinates of the public key in big-endian byte order, in
-//!    particular the encoded coordinates are less than the P-384 field
-//!    modulus, or
+//!      and the bytes at indices 1..49 and 49..97 encode the affine X and Y
+//!      coordinates of the public key in big-endian byte order, in
+//!      particular the encoded coordinates are less than the P-384 field
+//!      modulus, or
 //!    - SEC1 compressed: 49 bytes where the byte at index 0 is either
-//!    `0x02` or `0x03` and the bytes at indices 1..49 encode the affine X
-//!    coordinate of the public key in big-endian byte order, in
-//!    particular the encoded coordinate is less than the P-384 field modulus.
+//!      `0x02` or `0x03` and the bytes at indices 1..49 encode the affine X
+//!      coordinate of the public key in big-endian byte order, in
+//!      particular the encoded coordinate is less than the P-384 field modulus.
 //! 1. The encoded coordinates correspond to a valid public key, in
 //!    particular
 //!    - The encoded or reconstructed point coordinates correspond to a
@@ -35,7 +36,8 @@
 //! 0. They are field elements encoded as 48-byte big-endian arrays.
 //! 1. They are non-zero.
 //! 2. They are strictly less than the curve order.
-//! These requirements are checked on deserialization.
+//!
+//!These requirements are checked on deserialization.
 //!
 //! When a public key is derived from a valid private key it is done by
 //! scalar multiplication of the generator G with private key, after which

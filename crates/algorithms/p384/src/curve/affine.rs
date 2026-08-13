@@ -6,7 +6,7 @@
 
 use core::ops::Neg;
 
-use crate::{constants::FP_ZERO, field::Fp, InternalError};
+use crate::{field::Fp, InternalError};
 
 /// A point on P-384 in affine coordinates.
 #[derive(Clone, Copy)]

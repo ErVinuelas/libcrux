@@ -1,8 +1,20 @@
 //! # Curve Operations
 //!
-//! P-384 ECDH public keys are kept in projective coordinates,
-//! i.e. for a point (x, y) in affine coordinates, we usually work on
-//! its projective representation (X,Y,Z).
+//! Points on P-384 in affine representation are pairs `(X, Y)` of elements
+//! of the base prime field Fp (defined in [`field`], with some
+//! more convenience functions defined in [`field_ops`]), which satisfy
+//! the short Weierstrass equation `Y^2 = X^3 + aX + b`, where `a` and `b`
+//! are curve parameters (defined in [`constants`]).
+//!
+//! There is no affine representation of the point at infinity, the
+//! additive identity element of P-384, so group operations are performed
+//! in projective coordinates instead. An point `(X, Y)` in affine coordinates is
+//! transformed to projective coordinates as `(X, Y, 1)`. The point at
+//! infinity is represented by any point in projective coordinates with `Z
+//! = 0`. A point in projective coordinates `(X,Y,Z)` is transformed back
+//! to affine coordinates as `(X/Z, Y/Z)`, normalizing the `X` and `Y`
+//! coordinates by `Z`. This means that we cannot apply this
+//! transformation to the point at infinity.
 
 use crate::{
     constants::{FP_ONE, FP_ZERO, NIST_P384_B, NIST_P384_GX, NIST_P384_GY},
@@ -11,12 +23,11 @@ use crate::{
 
 pub(crate) mod affine;
 
-// pub(crate) mod scalar;
-
 use affine::AffinePoint;
 
-/// A P-384 public key.
+/// A point on P-384 in projective coordinates.
 #[derive(Clone, Copy)]
+#[cfg_attr(test, derive(Debug, PartialEq))]
 pub(crate) struct ProjectivePoint {
     x: Fp,
     y: Fp,
@@ -185,7 +196,7 @@ impl ProjectivePoint {
     }
 
     /// Any point with Z = 0 represents the point at infinity.
-    fn is_point_at_infinity(&self) -> bool {
+    pub(crate) fn is_point_at_infinity(&self) -> bool {
         self.z.is_zero()
     }
 
@@ -208,7 +219,7 @@ impl ProjectivePoint {
     }
 
     #[inline]
-    /// Perform a scalar multiplication of the public key and a given
+    /// Perform a scalar multiplication of the point and a given
     /// scalar, represented as a big endian byte array.
     ///
     /// Uses a simple Montgomery ladder internally.
@@ -232,22 +243,33 @@ impl ProjectivePoint {
         r0
     }
 
-    /// Attempt to convert the public key (a projective point) to
-    /// affine coordinates.
+    /// Attempt to convert the projective point to affine coordinates.
     ///
     /// This is not possible, if the input point is the point at
     /// infinity.
+    #[cfg(test)]
     pub(crate) fn to_affine(self) -> Option<AffinePoint> {
         if self.is_point_at_infinity() {
             return None;
         }
 
+        Some(self.to_affine_non_inf())
+    }
+
+    /// Convert a projective point that is not the point at infinity to
+    /// affine coordinates.
+    ///
+    /// CAUTION: It is the caller's responsibility to ensure that the
+    /// input to this function is not the point at infinity. If the
+    /// input encodes the point at infinity, the output of this
+    /// function is undefined.
+    pub(crate) fn to_affine_non_inf(self) -> AffinePoint {
         let z_inv = self.z.inv();
 
         let x = &self.x * &z_inv;
         let y = &self.y * &z_inv;
 
-        Some(AffinePoint { x, y })
+        AffinePoint { x, y }
     }
 }
 
@@ -279,4 +301,34 @@ fn cswap(swap: u64, a: &mut ProjectivePoint, b: &mut ProjectivePoint) {
         a.z.0[i] ^= t;
         b.z.0[i] ^= t;
     }
+}
+
+#[test]
+fn annihilation() {
+    use crate::constants::NIST_P384_CURVE_ORDER_BE_BYTES;
+
+    let g = ProjectivePoint::generator();
+    let mut p_minus_one = NIST_P384_CURVE_ORDER_BE_BYTES;
+    p_minus_one[47] -= 1;
+
+    let mut p_minus_two = NIST_P384_CURVE_ORDER_BE_BYTES;
+    p_minus_two[47] -= 2;
+
+    let g_p_minus_one = g.scalar_mul(&p_minus_one);
+    let g_p_minus_two = g.scalar_mul(&p_minus_two);
+
+    let split_g_p_minus_one = g_p_minus_two.add(&g);
+    let split_identity = g_p_minus_one.add(&g);
+
+    let identity = g.scalar_mul(&NIST_P384_CURVE_ORDER_BE_BYTES);
+
+    assert!(split_identity.is_point_at_infinity());
+    assert!(identity.is_point_at_infinity());
+
+    assert_eq!(
+        g_p_minus_one.to_affine().unwrap(),
+        split_g_p_minus_one.to_affine().unwrap()
+    );
+    assert_ne!(g_p_minus_one, g);
+    assert!(!g_p_minus_one.is_point_at_infinity());
 }

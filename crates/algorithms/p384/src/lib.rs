@@ -20,7 +20,7 @@
 //! // or derive the exported shared secret directly
 //! let shared_secret_direct = libcrux_p384::derive_ecdh(sk_bytes, pk_bytes).unwrap();
 //!
-//! assert_eq!(shared_secret_direct, shared_secret.to_bytes());
+//! assert_eq!(shared_secret_direct.as_ref(), shared_secret.as_ref());
 //! ```
 //! ## Cargo Features
 //!
@@ -69,9 +69,9 @@ pub(crate) enum InternalError {
 
 /// Attempt to derive an P-384 ECDH shared secret, given SEC1
 /// encodings of private and public keys.
-pub fn derive_ecdh(sk_bytes: &[u8], pk_bytes: &[u8]) -> Result<[u8; 48], EcdhError> {
+pub fn derive_ecdh(sk_bytes: &[u8], pk_bytes: &[u8]) -> Result<SharedSecret, EcdhError> {
     let sk = PrivateKey::try_from(sk_bytes)?;
     let pk = PublicKey::try_from(pk_bytes)?;
 
-    Ok(pk.ecdh(&sk).to_bytes())
+    Ok(pk.ecdh(&sk))
 }

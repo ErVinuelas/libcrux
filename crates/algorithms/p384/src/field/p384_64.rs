@@ -60,6 +60,7 @@ pub(crate) type fiat_p384_i2 = i8;
 /** Bounds: [[0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff], [0x0 ~> 0xffffffffffffffff]] */
 /** ``` */
 #[derive(Clone, Copy)]
+#[cfg_attr(test, derive(Debug, PartialEq))]
 pub(crate) struct fiat_p384_montgomery_domain_field_element(pub(crate) [u64; 6]);
 
 impl core::ops::Index<usize> for fiat_p384_montgomery_domain_field_element {

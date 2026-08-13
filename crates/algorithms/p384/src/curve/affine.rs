@@ -1,20 +1,23 @@
 //! # Affine Coordinate Representation
 //!
-//! We don't use affine coordinates for curve operations, only as a
-//! helper during serialization and deserialization.
+//! We don't use affine coordinates for curve operations, just to store
+//! points that must not be the point at infinity, such as valid ECDH
+//! public keys.
 
 use core::ops::Neg;
 
 use crate::{constants::FP_ZERO, field::Fp, InternalError};
 
-/// A point on P-384 in affine representation.
+/// A point on P-384 in affine coordinates.
+#[derive(Clone, Copy)]
+#[cfg_attr(test, derive(Debug, PartialEq))]
 pub(crate) struct AffinePoint {
     pub(crate) x: Fp,
     pub(crate) y: Fp,
 }
 
 impl AffinePoint {
-    /// Read a SEC1 uncompressed encoding of an affine point.
+    /// Read a SEC1 uncompressed public key encoding.
     ///
     /// This function validates the correctness of the encoding, but *does
     /// not* validate the curve point itself. For checking curve membership,
@@ -44,7 +47,7 @@ impl AffinePoint {
         Ok(AffinePoint { x, y })
     }
 
-    /// Read the SEC1 compressed encoding of an affine point from the input
+    /// Read the SEC1 compressed encoding of a public key from the input
     /// buffer.
     ///
     /// Returns an error if the buffer does not contain a valid encoding of a
@@ -93,7 +96,7 @@ impl AffinePoint {
 
     /// Write the SEC1 uncompressed encoding of the affine point into the
     /// provided buffer `out`.
-    pub(crate) fn to_uncompressed(&self, out: &mut [u8; 97]) {
+    pub(crate) fn to_uncompressed(self, out: &mut [u8; 97]) {
         out[0] = 0x04;
         out[1..49].copy_from_slice(&self.x.to_be_bytes());
         out[49..].copy_from_slice(&self.y.to_be_bytes());
@@ -101,7 +104,7 @@ impl AffinePoint {
 
     /// Write the SEC1 compressed encoding of the affine point into the provided
     /// buffer `out`.
-    pub(crate) fn to_compressed(&self, out: &mut [u8; 49]) {
+    pub(crate) fn to_compressed(self, out: &mut [u8; 49]) {
         if self.y.is_odd() {
             out[0] = 0x03;
         } else {

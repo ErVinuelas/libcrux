@@ -85,13 +85,13 @@ fn ecdh_secp384r1() {
                 TestResult::Valid | TestResult::Acceptable => {
                     assert!(
                         result.is_ok(),
-                        "tc_id {}: expected success or acceptable but ECDH failed {:?}",
+                        "tc_id {}: expected success or acceptable but ECDH failed",
                         test.tc_id,
-                        result
                     );
                     let result = result.unwrap();
                     assert_eq!(
-                        test.shared_secret, result,
+                        test.shared_secret,
+                        result.as_ref(),
                         "tc_id {}: shared secret mismatch",
                         test.tc_id,
                     );

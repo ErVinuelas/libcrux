@@ -153,6 +153,10 @@ impl Fp {
     /// (p+1)/4 mod p using square-and-mul. This is safe, since we
     /// only branch on the bits of the public constant (p+1)/4, not on
     /// any bits of `self`.
+    ///
+    /// If the result squares to the original input, we have confirmed
+    /// the input was a quadratic residue and can return its square
+    /// root.
     pub(crate) fn sqrt(&self) -> Option<Self> {
         let mut acc = FP_ONE;
 

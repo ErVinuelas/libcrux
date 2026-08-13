@@ -80,10 +80,13 @@ impl AffinePoint {
 
         let weierstrass_lhs = x.weierstrass_rhs();
 
-        if weierstrass_lhs.is_zero() {
-            // XXX: In this case, do we require a specific value for `expect_odd`?
-            Ok(AffinePoint { x, y: FP_ZERO })
-        } else if let Some(y) = weierstrass_lhs.sqrt() {
+        // Note that there are no solutions for X^3 + aX + b = 0 in a
+        // prime order field, so we don't have to consider the case
+        // that Y = 0.
+        // See e.g. https://crypto.stackexchange.com/a/108242 for a
+        // simple proof of the above claim.
+        assert!(!weierstrass_lhs.is_zero());
+        if let Some(y) = weierstrass_lhs.sqrt() {
             if y.is_odd() == expect_odd {
                 Ok(AffinePoint { x, y })
             } else {

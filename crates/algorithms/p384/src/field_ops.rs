@@ -5,8 +5,8 @@ use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use crate::{
     constants::{
-        fp_from_be_bytes, FP_ONE, FP_ZERO, NIST_P384_A, NIST_P384_B, NIST_P384_P_BE_BYTES,
-        NIST_P384_P_PLUS_1_OVER_4_BE_BYTES,
+        fp_from_be_bytes, FP_NUM_BYTES, FP_ONE, FP_ZERO, NIST_P384_A, NIST_P384_B,
+        NIST_P384_P_BE_BYTES, NIST_P384_P_PLUS_1_OVER_4_BE_BYTES, P384_NUM_BYTES,
     },
     field::{
         fiat_p384_to_bytes, fp_add, fp_from_montgomery, fp_inv, fp_mul, fp_nonzero, fp_opp,
@@ -27,6 +27,17 @@ impl Add<&Fp> for &Fp {
     }
 }
 
+impl Add<Fp> for Fp {
+    type Output = Fp;
+
+    #[inline]
+    fn add(self, rhs: Fp) -> Self::Output {
+        let mut out = Fp::new();
+        fp_add(&mut out, &self, &rhs);
+        out
+    }
+}
+
 impl Mul<&Fp> for &Fp {
     type Output = Fp;
 
@@ -37,6 +48,18 @@ impl Mul<&Fp> for &Fp {
         out
     }
 }
+
+impl Mul<Fp> for Fp {
+    type Output = Fp;
+
+    #[inline]
+    fn mul(self, rhs: Fp) -> Self::Output {
+        let mut out = Fp::new();
+        fp_mul(&mut out, &self, &rhs);
+        out
+    }
+}
+
 impl Sub<&Fp> for &Fp {
     type Output = Fp;
 
@@ -47,6 +70,18 @@ impl Sub<&Fp> for &Fp {
         out
     }
 }
+
+impl Sub<Fp> for Fp {
+    type Output = Fp;
+
+    #[inline]
+    fn sub(self, rhs: Fp) -> Self::Output {
+        let mut out = Fp::new();
+        fp_sub(&mut out, &self, &rhs);
+        out
+    }
+}
+
 impl Neg for &Fp {
     type Output = Fp;
 
@@ -113,10 +148,10 @@ impl Fp {
 
     /// Parse a Montgomery standard form field element from big-endian bytes.
     ///
-    /// Returns `None` if the encoded integer is unreduced,
+    /// Returns [`InternalError`] if the encoded integer is unreduced,
     /// i.e. larger than the field modulus.
     #[inline]
-    pub(crate) fn from_be_bytes(bytes: &[u8; 48]) -> Result<Self, InternalError> {
+    pub(crate) fn from_be_bytes(bytes: &[u8; P384_NUM_BYTES]) -> Result<Self, InternalError> {
         if !be_bytes_lt(bytes, &NIST_P384_P_BE_BYTES) {
             return Err(InternalError::FieldElement);
         }
@@ -126,10 +161,10 @@ impl Fp {
     /// Converts a Montgomery-domain field element to big-endian
     /// bytes.
     #[inline]
-    pub(crate) fn to_be_bytes(self) -> [u8; 48] {
+    pub(crate) fn to_be_bytes(self) -> [u8; P384_NUM_BYTES] {
         let mut raw = FpRaw::new();
         fp_from_montgomery(&mut raw, &self);
-        let mut le = [0u8; 48];
+        let mut le = [0u8; P384_NUM_BYTES];
         fiat_p384_to_bytes(&mut le, &raw.0);
         le.reverse();
         le
@@ -194,6 +229,6 @@ impl FpRaw {
     ///
     /// Only need this because we can't implement `Default` as `const`.
     pub(crate) const fn new() -> Self {
-        Self([0u64; 6])
+        Self([0u64; FP_NUM_BYTES])
     }
 }

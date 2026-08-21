@@ -56,31 +56,31 @@ impl ProjectivePoint {
         let mut t2 = z.square(); // 3.
 
         let mut t3 = x * y; // 4.
-        t3 = &t3 + &t3; // 5.
+        t3 = t3 + t3; // 5.
         let mut z3 = x * z; // 6.
 
-        z3 = &z3 + &z3; // 7.
-        let mut y3 = &t2 * &NIST_P384_B; // 8.
+        z3 = z3 + z3; // 7.
+        let mut y3 = t2 * NIST_P384_B; // 8.
         y3 -= z3; // 9.
 
-        let mut x3 = &y3 + &y3; // 10.
+        let mut x3 = y3 + y3; // 10.
         y3 += x3; // 11.
-        x3 = &t1 - &y3; // 12.
+        x3 = t1 - y3; // 12.
 
         y3 += t1; // 13.
         y3 *= x3; // 14.
         x3 *= t3; // 15.
 
-        t3 = &t2 + &t2; // 16.
+        t3 = t2 + t2; // 16.
         t2 += t3; // 17.
         z3 *= NIST_P384_B; // 18.
 
         z3 -= t2; // 19.
         z3 -= t0; // 20.
-        t3 = &z3 + &z3; // 21.
+        t3 = z3 + z3; // 21.
 
         z3 += t3; // 22.
-        t3 = &t0 + &t0; // 23.
+        t3 = t0 + t0; // 23.
         t0 += t3; // 24.
 
         t0 -= t2; // 25.
@@ -88,14 +88,14 @@ impl ProjectivePoint {
         y3 += t0; // 27.
 
         t0 = y * z; // 28.
-        t0 = &t0 + &t0; // 29.
+        t0 = t0 + t0; // 29.
         z3 *= t0; // 30.
 
         x3 -= z3; // 31.
-        z3 = &t0 * &t1; // 32.
-        z3 = &z3 + &z3; // 33.
+        z3 = t0 * t1; // 32.
+        z3 = z3 + z3; // 33.
 
-        z3 = &z3 + &z3; // 34.
+        z3 = z3 + z3; // 34.
 
         ProjectivePoint {
             x: x3,
@@ -138,53 +138,53 @@ impl ProjectivePoint {
         let mut t4 = x2 + y2; // 5.
         t3 *= t4; // 6.
 
-        t4 = &t0 + &t1; // 7.
+        t4 = t0 + t1; // 7.
         t3 -= t4; // 8.
         t4 = y1 + z1; // 9.
 
         let mut x3 = y2 + z2; // 10.
         t4 *= x3; // 11.
-        x3 = &t1 + &t2; // 12.
+        x3 = t1 + t2; // 12.
 
         t4 -= x3; // 13.
         x3 = x1 + z1; // 14.
         let mut y3 = x2 + z2; // 15.
 
         x3 *= y3; // 16.
-        y3 = &t0 + &t2; // 17.
-        y3 = &x3 - &y3; // 18.
+        y3 = t0 + t2; // 17.
+        y3 = x3 - y3; // 18.
 
-        let mut z3 = &t2 * &NIST_P384_B; // 19.
-        x3 = &y3 - &z3; // 20.
-        z3 = &x3 + &x3; // 21.
+        let mut z3 = t2 * NIST_P384_B; // 19.
+        x3 = y3 - z3; // 20.
+        z3 = x3 + x3; // 21.
 
         x3 += z3; // 22.
-        z3 = &t1 - &x3; // 23.
+        z3 = t1 - x3; // 23.
         x3 += t1; // 24.
 
         y3 *= NIST_P384_B; // 25.
-        t1 = &t2 + &t2; // 26.
+        t1 = t2 + t2; // 26.
         t2 += t1; // 27.
 
         y3 -= t2; // 28.
         y3 -= t0; // 29.
-        t1 = &y3 + &y3; // 30.
+        t1 = y3 + y3; // 30.
 
         y3 += t1; // 31.
-        t1 = &t0 + &t0; // 32.
+        t1 = t0 + t0; // 32.
         t0 += t1; // 33.
 
         t0 -= t2; // 34.
-        t1 = &t4 * &y3; // 35.
-        t2 = &t0 * &y3; // 36.
+        t1 = t4 * y3; // 35.
+        t2 = t0 * y3; // 36.
 
-        y3 = &x3 * &z3; // 37.
+        y3 = x3 * z3; // 37.
         y3 += t2; // 38.
         x3 *= t3; // 39.
 
         x3 -= t1; // 40.
         z3 *= t4; // 41.
-        t1 = &t3 * &t0; // 42.
+        t1 = t3 * t0; // 42.
 
         z3 += t1; // 43.
 
@@ -259,15 +259,15 @@ impl ProjectivePoint {
     /// Convert a projective point that is not the point at infinity to
     /// affine coordinates.
     ///
-    /// CAUTION: It is the caller's responsibility to ensure that the
+    /// **CAUTION:** It is the caller's responsibility to ensure that the
     /// input to this function is not the point at infinity. If the
     /// input encodes the point at infinity, the output of this
     /// function is undefined.
     pub(crate) fn to_affine_non_inf(self) -> AffinePoint {
         let z_inv = self.z.inv();
 
-        let x = &self.x * &z_inv;
-        let y = &self.y * &z_inv;
+        let x = self.x * z_inv;
+        let y = self.y * z_inv;
 
         AffinePoint { x, y }
     }
@@ -303,32 +303,37 @@ fn cswap(swap: u64, a: &mut ProjectivePoint, b: &mut ProjectivePoint) {
     }
 }
 
-#[test]
-fn annihilation() {
-    use crate::constants::NIST_P384_CURVE_ORDER_BE_BYTES;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let g = ProjectivePoint::generator();
-    let mut p_minus_one = NIST_P384_CURVE_ORDER_BE_BYTES;
-    p_minus_one[47] -= 1;
+    #[test]
+    fn annihilation() {
+        use crate::constants::NIST_P384_CURVE_ORDER_BE_BYTES;
 
-    let mut p_minus_two = NIST_P384_CURVE_ORDER_BE_BYTES;
-    p_minus_two[47] -= 2;
+        let g = ProjectivePoint::generator();
+        let mut p_minus_one = NIST_P384_CURVE_ORDER_BE_BYTES;
+        p_minus_one[47] -= 1;
 
-    let g_p_minus_one = g.scalar_mul(&p_minus_one);
-    let g_p_minus_two = g.scalar_mul(&p_minus_two);
+        let mut p_minus_two = NIST_P384_CURVE_ORDER_BE_BYTES;
+        p_minus_two[47] -= 2;
 
-    let split_g_p_minus_one = g_p_minus_two.add(&g);
-    let split_identity = g_p_minus_one.add(&g);
+        let g_p_minus_one = g.scalar_mul(&p_minus_one);
+        let g_p_minus_two = g.scalar_mul(&p_minus_two);
 
-    let identity = g.scalar_mul(&NIST_P384_CURVE_ORDER_BE_BYTES);
+        let split_g_p_minus_one = g_p_minus_two.add(&g);
+        let split_identity = g_p_minus_one.add(&g);
 
-    assert!(split_identity.is_point_at_infinity());
-    assert!(identity.is_point_at_infinity());
+        let identity = g.scalar_mul(&NIST_P384_CURVE_ORDER_BE_BYTES);
 
-    assert_eq!(
-        g_p_minus_one.to_affine().unwrap(),
-        split_g_p_minus_one.to_affine().unwrap()
-    );
-    assert_ne!(g_p_minus_one, g);
-    assert!(!g_p_minus_one.is_point_at_infinity());
+        assert!(split_identity.is_point_at_infinity());
+        assert!(identity.is_point_at_infinity());
+
+        assert_eq!(
+            g_p_minus_one.to_affine().unwrap(),
+            split_g_p_minus_one.to_affine().unwrap()
+        );
+        assert_ne!(g_p_minus_one, g);
+        assert!(!g_p_minus_one.is_point_at_infinity());
+    }
 }

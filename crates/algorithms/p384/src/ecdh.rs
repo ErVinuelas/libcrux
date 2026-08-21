@@ -8,15 +8,15 @@
 //! public key. Validity requirements for public keys are:
 //! 0. Their encoding is either
 //!
-//!    - SEC1 uncompressed: 97 bytes where the byte at index 0 is `0x04`
-//!      and the bytes at indices 1..49 and 49..97 encode the affine X and Y
-//!      coordinates of the public key in big-endian byte order, in
-//!      particular the encoded coordinates are less than the P-384 field
-//!      modulus, or
-//!    - SEC1 compressed: 49 bytes where the byte at index 0 is either
-//!      `0x02` or `0x03` and the bytes at indices 1..49 encode the affine X
-//!      coordinate of the public key in big-endian byte order, in
-//!      particular the encoded coordinate is less than the P-384 field modulus.
+//! - SEC1 uncompressed: 97 bytes where the byte at index 0 is `0x04`
+//!   and the bytes at indices 1..49 and 49..97 encode the affine X and Y
+//!   coordinates of the public key in big-endian byte order, in
+//!   particular the encoded coordinates are less than the P-384 field
+//!   modulus, or
+//! - SEC1 compressed: 49 bytes where the byte at index 0 is either
+//!   `0x02` or `0x03` and the bytes at indices 1..49 encode the affine X
+//!   coordinate of the public key in big-endian byte order, in
+//!   particular the encoded coordinate is less than the P-384 field modulus.
 //! 1. The encoded coordinates correspond to a valid public key, in
 //!    particular
 //!    - The encoded or reconstructed point coordinates correspond to a
@@ -49,10 +49,11 @@
 //! Shared secrets are the result of a scalar multiplication between a
 //! valid public key and a valid private key. We don't need to worry about
 //! the shared secret being the point at infinity, since if we have kP = O
-//! for some scalar k and point P, it must either hold that k = 0, wich
+//! for some scalar k and point P, it must either hold that k = 0, which
 //! would make k an invalid private key or P = 0, which would make P an
 //! invalid public key.
 use crate::{
+    constants::{COMPRESSED_POINT_LEN, UNCOMPRESSED_POINT_LEN},
     curve::{affine::AffinePoint, ProjectivePoint},
     EcdhError as Error,
 };
@@ -78,7 +79,7 @@ impl PublicKey {
     pub fn ecdh(&self, private_key: &PrivateKey) -> SharedSecret {
         let pk_projective = ProjectivePoint::from(self.0);
 
-        // This can never be the point at inifinity, since the public
+        // This can never be the point at infinity, since the public
         // key is not the point at infinity and the private key is a
         // non-zero scalar less than the group order.
         let ecdh_projective = pk_projective.scalar_mul(&private_key.0);
@@ -134,8 +135,8 @@ impl TryFrom<&[u8]> for PublicKey {
     /// uncompressed encoding lengths.
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         match value.len() {
-            49 => Self::from_compressed(value),
-            97 => Self::from_uncompressed(value),
+            COMPRESSED_POINT_LEN => Self::from_compressed(value),
+            UNCOMPRESSED_POINT_LEN => Self::from_uncompressed(value),
             _ => Err(Error::InvalidPublicKey),
         }
     }

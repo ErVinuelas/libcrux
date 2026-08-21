@@ -6,7 +6,14 @@
 
 use core::ops::Neg;
 
-use crate::{field::Fp, InternalError};
+use crate::{
+    constants::{
+        COMPRESSED_POINT_ID, COMPRESSED_POINT_ID_ODD, COMPRESSED_POINT_LEN, UNCOMPRESSED_POINT_ID,
+        UNCOMPRESSED_POINT_LEN,
+    },
+    field::Fp,
+    InternalError,
+};
 
 /// A point on P-384 in affine coordinates.
 #[derive(Clone, Copy)]
@@ -32,12 +39,15 @@ impl AffinePoint {
     /// where X = FE2OS(x_P) and Y = FE2OS(y_P) are the encodings of curve
     /// coordinates as octet strings.
     pub(crate) fn from_uncompressed(uncompressed_bytes: &[u8]) -> Result<Self, InternalError> {
-        if uncompressed_bytes.len() != 97 || uncompressed_bytes[0] != 0x04 {
+        if uncompressed_bytes.len() != UNCOMPRESSED_POINT_LEN
+            || uncompressed_bytes[0] != UNCOMPRESSED_POINT_ID
+        {
             return Err(InternalError::Uncompressed);
         }
 
-        let x_bytes = &uncompressed_bytes[1..49];
-        let y_bytes = &uncompressed_bytes[49..];
+        const OFFSET: usize = 1;
+        let x_bytes = &uncompressed_bytes[OFFSET..UNCOMPRESSED_POINT_LEN / 2 + OFFSET];
+        let y_bytes = &uncompressed_bytes[UNCOMPRESSED_POINT_LEN / 2 + OFFSET..];
 
         let x = Fp::from_be_bytes(x_bytes.try_into().expect("x_bytes is 48 bytes long"))
             .map_err(|_| InternalError::Uncompressed)?;
@@ -62,14 +72,16 @@ impl AffinePoint {
     /// curve, if Y' is a square. If Y' is non-zero, which of two possible
     /// points was encoded is determined from `y_P`.
     pub fn from_compressed(compressed_bytes: &[u8]) -> Result<Self, InternalError> {
-        if compressed_bytes.len() != 49 {
+        if compressed_bytes.len() != COMPRESSED_POINT_LEN {
             return Err(InternalError::Compressed);
         }
-        if !(compressed_bytes[0] == 0x02 || compressed_bytes[0] == 0x03) {
+        if !(compressed_bytes[0] == COMPRESSED_POINT_ID
+            || compressed_bytes[0] == COMPRESSED_POINT_ID_ODD)
+        {
             return Err(InternalError::Compressed);
         }
 
-        let expect_odd = compressed_bytes[0] == 0x03;
+        let expect_odd = compressed_bytes[0] == COMPRESSED_POINT_ID_ODD;
 
         let x = Fp::from_be_bytes(
             &compressed_bytes[1..]
@@ -99,21 +111,21 @@ impl AffinePoint {
 
     /// Write the SEC1 uncompressed encoding of the affine point into the
     /// provided buffer `out`.
-    pub(crate) fn to_uncompressed(self, out: &mut [u8; 97]) {
-        out[0] = 0x04;
+    pub(crate) fn to_uncompressed(self, out: &mut [u8; UNCOMPRESSED_POINT_LEN]) {
+        out[0] = UNCOMPRESSED_POINT_ID;
         out[1..49].copy_from_slice(&self.x.to_be_bytes());
         out[49..].copy_from_slice(&self.y.to_be_bytes());
     }
 
     /// Write the SEC1 compressed encoding of the affine point into the provided
     /// buffer `out`.
-    pub(crate) fn to_compressed(self, out: &mut [u8; 49]) {
+    pub(crate) fn to_compressed(self, out: &mut [u8; COMPRESSED_POINT_LEN]) {
         if self.y.is_odd() {
-            out[0] = 0x03;
+            out[0] = COMPRESSED_POINT_ID_ODD;
         } else {
-            out[0] = 0x02;
+            out[0] = COMPRESSED_POINT_ID;
         }
-        out[1..49].copy_from_slice(&self.x.to_be_bytes());
+        out[1..COMPRESSED_POINT_LEN].copy_from_slice(&self.x.to_be_bytes());
     }
 
     /// Validate the curve equation.

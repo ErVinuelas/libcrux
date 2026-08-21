@@ -9,14 +9,14 @@ use rand::TryCryptoRng;
 #[cfg(feature = "rand")]
 use crate::RandomnessError;
 use crate::{
-    constants::NIST_P384_CURVE_ORDER_BE_BYTES,
+    constants::{NIST_P384_CURVE_ORDER_BE_BYTES, P384_NUM_BYTES},
     util::{be_bytes_lt, be_bytes_nonzero},
 };
 
 /// A P-384 private key.
 pub struct PrivateKey(
     /// This is a big-endian encoding of an integer x with 0 < x < NIST_P384_CURVE_ORDER.
-    pub(crate) [u8; 48],
+    pub(crate) [u8; P384_NUM_BYTES],
 );
 
 #[cfg(feature = "rand")]
@@ -31,7 +31,7 @@ impl PrivateKey {
     /// rejection sampling does not succeed in a particular number of
     /// attempts, indicating a major failure of randomness generation.
     pub fn generate(rng: &mut impl TryCryptoRng) -> Result<Self, RandomnessError> {
-        let mut bytes = [0u8; 48];
+        let mut bytes = [0u8; P384_NUM_BYTES];
         let mut attempts = 0;
 
         while attempts < SCALAR_REJ_SAMPLING_BOUND {
@@ -55,7 +55,7 @@ impl TryFrom<&[u8]> for PrivateKey {
     /// A valid SEC1 encoding of a P-384 private key is a 48 byte
     /// big-endian integer that is less than the P-384 curve order.
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        let value: [u8; 48] = value
+        let value: [u8; P384_NUM_BYTES] = value
             .try_into()
             .map_err(|_| Self::Error::InvalidPrivateKey)?;
         if be_bytes_nonzero(&value) && be_bytes_lt(&value, &NIST_P384_CURVE_ORDER_BE_BYTES) {

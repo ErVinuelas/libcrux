@@ -9,15 +9,25 @@ rust-version.workspace = true
 repository.workspace = true
 readme.workspace = true
 
+[lib]
+bench = false # so libtest doesn't eat the arguments to criterion
+
 [dependencies]
 rand = { workspace = true, default-features = false, optional = true }
 
 [dev-dependencies]
 libcrux-kats = { workspace = true, features = ["ecdh"] }
+criterion = "0.8.0"
+hex = "0.4.3"
+rand = { version = "0.10" }
 
 [features]
 # Provides private key generation API
 rand = ["dep:rand"]
+
+[[bench]]
+harness = false
+name = "ecdh"
 
 [package.metadata.docs.rs]
 all-features = true

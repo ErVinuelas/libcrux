@@ -37,13 +37,10 @@ impl PrivateKey {
         while attempts < SCALAR_REJ_SAMPLING_BOUND {
             rng.try_fill_bytes(&mut bytes)
                 .map_err(|_| RandomnessError)?;
-            let res = Self::try_from(bytes.as_slice());
-
-            if res.is_ok() {
-                return res.map_err(|_| RandomnessError);
-            } else {
-                attempts += 1
+            if let Ok(key) = Self::try_from(bytes.as_slice()) {
+                return Ok(key);
             }
+            attempts += 1;
         }
         Err(RandomnessError)
     }

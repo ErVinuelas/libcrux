@@ -35,30 +35,54 @@ fn ecdh_secp384r1() {
             if test.public_key.len() == 97 {
                 let decode_result = libcrux_p384::PublicKey::try_from(test.public_key.as_slice());
 
-                if decode_result.is_err() {
-                    assert_eq!(
-                        TestResult::Invalid,
-                        test.result,
-                        "tc_id: {}, test has invalid uncompressed point but test result is {:?}",
-                        test.tc_id,
-                        test.result
-                    );
-                    tests_run += 1;
-                    continue;
+                match decode_result {
+                    Ok(pk) => {
+                        let mut re_encoded = [0u8; 97];
+                        pk.to_uncompressed(&mut re_encoded);
+                        assert_eq!(
+                            re_encoded.as_slice(),
+                            test.public_key.as_slice(),
+                            "tc_id: {}, re-encoding an uncompressed point did not reproduce the input",
+                            test.tc_id
+                        );
+                    }
+                    Err(_) => {
+                        assert_eq!(
+                            TestResult::Invalid,
+                            test.result,
+                            "tc_id: {}, test has invalid uncompressed point but test result is {:?}",
+                            test.tc_id,
+                            test.result
+                        );
+                        tests_run += 1;
+                        continue;
+                    }
                 }
             } else if test.public_key.len() == 49 {
                 let decode_result = libcrux_p384::PublicKey::try_from(test.public_key.as_slice());
 
-                if decode_result.is_err() {
-                    assert_eq!(
-                        TestResult::Invalid,
-                        test.result,
-                        "tc_id: {}, test has invalid compressed point but test result is {:?}",
-                        test.tc_id,
-                        test.result
-                    );
-                    tests_run += 1;
-                    continue;
+                match decode_result {
+                    Ok(pk) => {
+                        let mut re_encoded = [0u8; 49];
+                        pk.to_compressed(&mut re_encoded);
+                        assert_eq!(
+                            re_encoded.as_slice(),
+                            test.public_key.as_slice(),
+                            "tc_id: {}, re-encoding a compressed point did not reproduce the input",
+                            test.tc_id
+                        );
+                    }
+                    Err(_) => {
+                        assert_eq!(
+                            TestResult::Invalid,
+                            test.result,
+                            "tc_id: {}, test has invalid compressed point but test result is {:?}",
+                            test.tc_id,
+                            test.result
+                        );
+                        tests_run += 1;
+                        continue;
+                    }
                 }
             } else {
                 assert_eq!(

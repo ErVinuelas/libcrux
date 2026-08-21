@@ -130,9 +130,9 @@ impl Fp {
     /// `self` as big-endian bytes is set, i.e. whether
     /// `from_montgomery(self) % 2 == 1`.
     pub(crate) fn is_odd(&self) -> bool {
-        // XXX: It would be more efficient to not convert to
-        // big-endian here, at least. Perhaps we can also check it
-        // directly in Montgomery domain?
+        // Reading the parity bit directly from the raw (pre-serialization)
+        // limb array was tried here and measured no difference in the ECDH
+        // benchmark, so this keeps the simpler byte-serialization form.
         let serialized = self.to_be_bytes();
         serialized[47] & 1 == 1
     }
@@ -218,6 +218,9 @@ impl Fp {
     /// Computes the right-hand side of the short Weierstrass equation
     /// for P-384, i.e. X^3 + aX + b.
     pub(crate) fn weierstrass_rhs(&self) -> Self {
+        // Computing a*X via additions (since a = -3) instead of a full
+        // multiplication was tried here and measured no difference in the
+        // ECDH benchmark, so this keeps the simpler multiplication form.
         let x_cubed = &self.square() * self;
         let ax = self * &NIST_P384_A;
         &(&x_cubed + &ax) + &NIST_P384_B

@@ -36,3 +36,40 @@ pub(crate) fn be_bytes_nonzero(x: &[u8; FP_NUM_BYTES]) -> bool {
     }
     check != 0
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lt() {
+        let mut a = [0u8; 48];
+        let mut b = [0u8; 48];
+
+        // a == b == 0
+        assert!(!be_bytes_lt(&a, &b));
+
+        // b >= a
+        b[47] = 1;
+        assert!(be_bytes_lt(&a, &b));
+        b[0] = 1;
+        assert!(be_bytes_lt(&a, &b));
+
+        // a bytes can be larger than b bytes if preceeding b bytes
+        // were larger than preceeding b bytes.
+        a[1] = 2;
+        assert!(be_bytes_lt(&a, &b));
+
+        a[47] = 1;
+        b[1] = 2;
+        assert!(be_bytes_lt(&a, &b));
+
+        // a == b != 0
+        a[0] = 1;
+        assert!(!be_bytes_lt(&a, &b));
+
+        // a > b != 0
+        a[0] = 2;
+        assert!(!be_bytes_lt(&a, &b));
+    }
+}

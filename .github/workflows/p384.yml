@@ -3,9 +3,9 @@ name: P384
 on:
   merge_group:
   pull_request:
-    branches: ["main", "dev", "*"]
     paths:
       - "crates/algorithms/p384/**"
+      - "crates/testing/kats/**"
   workflow_dispatch:
 
 env:

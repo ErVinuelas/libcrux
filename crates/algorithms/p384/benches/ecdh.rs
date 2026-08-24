@@ -24,7 +24,7 @@ fn ecdh_static(c: &mut Criterion) {
 }
 
 fn ecdh_variable_pk_uncompressed(c: &mut Criterion) {
-    c.bench_function("P-384 ECDH", |b| {
+    c.bench_function("P-384 ECDH Variable PK (Uncompressed)", |b| {
         b.iter_batched(
             || {
                 let mut rng = rand::rng();
@@ -55,7 +55,7 @@ fn ecdh_variable_pk_uncompressed(c: &mut Criterion) {
 }
 
 fn ecdh_variable_pk_compressed(c: &mut Criterion) {
-    c.bench_function("P-384 ECDH", |b| {
+    c.bench_function("P-384 ECDH Variable PK (Compressed)", |b| {
         b.iter_batched(
             || {
                 let mut rng = rand::rng();
@@ -86,8 +86,9 @@ fn ecdh_variable_pk_compressed(c: &mut Criterion) {
 }
 
 criterion_group!(
-    benches,
-    ecdh_static,
+    name = benches;
+    config = Criterion::default().measurement_time(std::time::Duration::new(15,0));
+    targets = ecdh_static,
     ecdh_variable_pk_compressed,
     ecdh_variable_pk_uncompressed
 );

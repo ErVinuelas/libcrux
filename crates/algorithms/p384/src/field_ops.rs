@@ -223,7 +223,7 @@ impl Fp {
         // ECDH benchmark, so this keeps the simpler multiplication form.
         let x_cubed = &self.square() * self;
         let ax = self * &NIST_P384_A;
-        &(&x_cubed + &ax) + &NIST_P384_B
+        (x_cubed + ax) + NIST_P384_B
     }
 }
 

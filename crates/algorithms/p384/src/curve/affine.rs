@@ -135,6 +135,6 @@ impl AffinePoint {
         let y_squared = self.y.square();
         let rhs = self.x.weierstrass_rhs();
 
-        (&y_squared - &rhs).is_zero()
+        (y_squared - rhs).is_zero()
     }
 }

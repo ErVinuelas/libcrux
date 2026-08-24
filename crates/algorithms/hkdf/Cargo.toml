@@ -22,3 +22,8 @@ libcrux-hmac = { workspace = true, features = [
 ] }
 libcrux-hacl-rs = { workspace = true, features = ["alloc"] }
 libcrux-secrets.workspace = true
+
+[dev-dependencies]
+libcrux-kats = { path = "../../testing/kats", features = ["hkdf"] }
+hkdf = "0.13"
+sha3 = "0.11"

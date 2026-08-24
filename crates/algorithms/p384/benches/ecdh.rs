@@ -30,24 +30,18 @@ fn ecdh_variable_pk_uncompressed(c: &mut Criterion) {
                 let mut rng = rand::rng();
 
                 let sk = PrivateKey::generate(&mut rng).unwrap();
-                let pks: [[u8; 97]; 100] = std::array::from_fn(|_| {
-                    let mut pk_bytes = [0u8; 97];
-                    let sk_i = PrivateKey::generate(&mut rng).unwrap();
-                    PublicKey::from(&sk_i).to_uncompressed(&mut pk_bytes);
-                    pk_bytes
-                });
-                (sk, pks)
+                let mut pk_bytes = [0u8; 97];
+                let sk_i = PrivateKey::generate(&mut rng).unwrap();
+                PublicKey::from(&sk_i).to_uncompressed(&mut pk_bytes);
+
+                (sk, pk_bytes)
             },
-            |(sk, pks)| {
-                for pk_bytes in pks {
-                    core::hint::black_box(
-                        libcrux_p384::derive_ecdh(
-                            core::hint::black_box(sk.as_ref()),
-                            core::hint::black_box(&pk_bytes),
-                        )
-                        .unwrap(),
-                    );
-                }
+            |(sk, pk)| {
+                libcrux_p384::derive_ecdh(
+                    core::hint::black_box(sk.as_ref()),
+                    core::hint::black_box(&pk),
+                )
+                .unwrap();
             },
             criterion::BatchSize::SmallInput,
         )
@@ -61,24 +55,18 @@ fn ecdh_variable_pk_compressed(c: &mut Criterion) {
                 let mut rng = rand::rng();
 
                 let sk = PrivateKey::generate(&mut rng).unwrap();
-                let pks: [[u8; 49]; 100] = std::array::from_fn(|_| {
-                    let mut pk_bytes = [0u8; 49];
-                    let sk_i = PrivateKey::generate(&mut rng).unwrap();
-                    PublicKey::from(&sk_i).to_compressed(&mut pk_bytes);
-                    pk_bytes
-                });
-                (sk, pks)
+                let mut pk_bytes = [0u8; 49];
+                let sk_i = PrivateKey::generate(&mut rng).unwrap();
+                PublicKey::from(&sk_i).to_compressed(&mut pk_bytes);
+
+                (sk, pk_bytes)
             },
-            |(sk, pks)| {
-                for pk_bytes in pks {
-                    core::hint::black_box(
-                        libcrux_p384::derive_ecdh(
-                            core::hint::black_box(sk.as_ref()),
-                            core::hint::black_box(&pk_bytes),
-                        )
-                        .unwrap(),
-                    );
-                }
+            |(sk, pk)| {
+                libcrux_p384::derive_ecdh(
+                    core::hint::black_box(sk.as_ref()),
+                    core::hint::black_box(&pk),
+                )
+                .unwrap();
             },
             criterion::BatchSize::SmallInput,
         )

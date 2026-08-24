@@ -5,7 +5,7 @@ use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use crate::{
     constants::{
-        fp_from_be_bytes, FP_NUM_BYTES, FP_ONE, FP_ZERO, NIST_P384_A, NIST_P384_B,
+        fp_from_be_bytes, FP_NUM_LIMBS, FP_ONE, FP_ZERO, NIST_P384_A, NIST_P384_B,
         NIST_P384_P_BE_BYTES, NIST_P384_P_PLUS_1_OVER_4_BE_BYTES, P384_NUM_BYTES,
     },
     field::{
@@ -134,7 +134,7 @@ impl Fp {
         // limb array was tried here and measured no difference in the ECDH
         // benchmark, so this keeps the simpler byte-serialization form.
         let serialized = self.to_be_bytes();
-        serialized[47] & 1 == 1
+        serialized[serialized.len() - 1] & 1 == 1
     }
 
     #[inline]
@@ -232,6 +232,6 @@ impl FpRaw {
     ///
     /// Only need this because we can't implement `Default` as `const`.
     pub(crate) const fn new() -> Self {
-        Self([0u64; FP_NUM_BYTES])
+        Self([0u64; FP_NUM_LIMBS])
     }
 }

@@ -7,11 +7,11 @@
 
 use crate::field::{fiat_p384_set_one, fp_from_bytes, fp_to_montgomery, Fp, FpRaw};
 
-/// Number of bytes used for P384.
+/// Number of bytes used for P384 scalars, i.e. elements of Fp.
 pub(crate) const P384_NUM_BYTES: usize = 48;
 
-/// Number of bytes used for FP.
-pub(crate) const FP_NUM_BYTES: usize = 6;
+/// Number of u64 limbs used for elements of Fp.
+pub(crate) const FP_NUM_LIMBS: usize = 6;
 
 /// The X-coordinate of the group generator of P-384, as big-endian bytes.
 pub(crate) const NIST_P384_GX_BE_BYTES: [u8; P384_NUM_BYTES] = [
@@ -101,7 +101,7 @@ pub(crate) const FP_ONE: Fp = {
 };
 
 /// Zero in P-384's base field, in Montgomery form.
-pub(crate) const FP_ZERO: Fp = Fp([0u64; FP_NUM_BYTES]);
+pub(crate) const FP_ZERO: Fp = Fp([0u64; FP_NUM_LIMBS]);
 
 // Constants for compressed and uncompressed lengths and identifiers.
 pub(crate) const COMPRESSED_POINT_LEN: usize = 49;

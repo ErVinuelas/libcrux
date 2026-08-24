@@ -17,7 +17,9 @@
 //! transformation to the point at infinity.
 
 use crate::{
-    constants::{FP_ONE, FP_ZERO, NIST_P384_B, NIST_P384_GX, NIST_P384_GY},
+    constants::{
+        FP_NUM_BYTES, FP_NUM_LIMBS, FP_ONE, FP_ZERO, NIST_P384_B, NIST_P384_GX, NIST_P384_GY,
+    },
     field::Fp,
 };
 
@@ -223,7 +225,7 @@ impl ProjectivePoint {
     /// scalar, represented as a big endian byte array.
     ///
     /// Uses a simple Montgomery ladder internally.
-    pub(crate) fn scalar_mul(&self, scalar: &[u8; 48]) -> Self {
+    pub(crate) fn scalar_mul(&self, scalar: &[u8; FP_NUM_BYTES]) -> Self {
         let mut r0 = Self::identity();
         let mut r1 = *self;
         let mut swap: u64 = 0;
@@ -290,7 +292,7 @@ impl From<AffinePoint> for ProjectivePoint {
 #[inline]
 fn cswap(swap: u64, a: &mut ProjectivePoint, b: &mut ProjectivePoint) {
     let mask = 0u64.wrapping_sub(swap); // swap in {0,1} -> mask is all-0s or all-1s
-    for i in 0..6 {
+    for i in 0..FP_NUM_LIMBS {
         let t = mask & (a.x.0[i] ^ b.x.0[i]);
         a.x.0[i] ^= t;
         b.x.0[i] ^= t;

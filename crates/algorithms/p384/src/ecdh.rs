@@ -53,7 +53,7 @@
 //! would make k an invalid private key or P = 0, which would make P an
 //! invalid public key.
 use crate::{
-    constants::{COMPRESSED_POINT_LEN, UNCOMPRESSED_POINT_LEN},
+    constants::{COMPRESSED_POINT_LEN, FP_NUM_BYTES, UNCOMPRESSED_POINT_LEN},
     curve::{affine::AffinePoint, ProjectivePoint},
     EcdhError as Error,
 };
@@ -63,10 +63,10 @@ pub(crate) mod private;
 use private::PrivateKey;
 
 /// A P-384 shared secret.
-pub struct SharedSecret([u8; 48]);
+pub struct SharedSecret([u8; FP_NUM_BYTES]);
 
-impl AsRef<[u8; 48]> for SharedSecret {
-    fn as_ref(&self) -> &[u8; 48] {
+impl AsRef<[u8; FP_NUM_BYTES]> for SharedSecret {
+    fn as_ref(&self) -> &[u8; FP_NUM_BYTES] {
         &self.0
     }
 }
@@ -117,13 +117,13 @@ impl PublicKey {
 
     /// Write the SEC1 uncompressed encoding of the public key into the
     /// provided buffer `out`.
-    pub fn to_uncompressed(self, out: &mut [u8; 97]) {
+    pub fn to_uncompressed(self, out: &mut [u8; UNCOMPRESSED_POINT_LEN]) {
         self.0.to_uncompressed(out);
     }
 
     /// Write the SEC1 compressed encoding of the public key into the provided
     /// buffer `out`.
-    pub fn to_compressed(self, out: &mut [u8; 49]) {
+    pub fn to_compressed(self, out: &mut [u8; COMPRESSED_POINT_LEN]) {
         self.0.to_compressed(out);
     }
 }

@@ -152,7 +152,7 @@ impl Fp {
     /// i.e. larger than the field modulus.
     #[inline]
     pub(crate) fn from_be_bytes(bytes: &[u8; FP_NUM_BYTES]) -> Result<Self, InternalError> {
-        if !be_bytes_lt(bytes, &NIST_P384_P_BE_BYTES) {
+        if !core::hint::black_box(be_bytes_lt(bytes, &NIST_P384_P_BE_BYTES)) {
             return Err(InternalError::FieldElement);
         }
         Ok(fp_from_be_bytes(bytes))

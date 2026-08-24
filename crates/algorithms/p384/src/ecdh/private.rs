@@ -61,7 +61,9 @@ impl TryFrom<&[u8]> for PrivateKey {
         let value: [u8; FP_NUM_BYTES] = value
             .try_into()
             .map_err(|_| Self::Error::InvalidPrivateKey)?;
-        if be_bytes_nonzero(&value) && be_bytes_lt(&value, &NIST_P384_CURVE_ORDER_BE_BYTES) {
+        if core::hint::black_box(be_bytes_nonzero(&value))
+            & core::hint::black_box(be_bytes_lt(&value, &NIST_P384_CURVE_ORDER_BE_BYTES))
+        {
             Ok(Self(value))
         } else {
             Err(Self::Error::InvalidPrivateKey)

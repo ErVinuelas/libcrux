@@ -19,7 +19,7 @@ rand = { workspace = true, default-features = false, optional = true }
 libcrux-kats = { workspace = true, features = ["ecdh"] }
 criterion = "0.8.0"
 hex = "0.4.3"
-rand = { version = "0.10" }
+rand = {workspace = true, features = ["thread_rng"] }
 
 [features]
 # Provides private key generation API
@@ -28,6 +28,7 @@ rand = ["dep:rand"]
 [[bench]]
 harness = false
 name = "ecdh"
+required-features = ["rand"]
 
 [package.metadata.docs.rs]
 all-features = true

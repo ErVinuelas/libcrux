@@ -19,6 +19,12 @@ pub struct PrivateKey(
     pub(crate) [u8; FP_NUM_BYTES],
 );
 
+impl AsRef<[u8; FP_NUM_BYTES]> for PrivateKey {
+    fn as_ref(&self) -> &[u8; FP_NUM_BYTES] {
+        &self.0
+    }
+}
+
 #[cfg(feature = "rand")]
 /// How many times to retry sampling a valid scalar during key generation.
 const SCALAR_REJ_SAMPLING_BOUND: usize = 5;

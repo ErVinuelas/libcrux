@@ -72,6 +72,7 @@ impl AsRef<[u8; FP_NUM_BYTES]> for SharedSecret {
 }
 
 /// An ECDH public key.
+#[derive(Clone, Copy)]
 pub struct PublicKey(AffinePoint);
 
 impl PublicKey {

@@ -27,7 +27,7 @@ jobs:
         working-directory: crates/algorithms/aes
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Update dependencies
         run: cargo update
@@ -48,61 +48,34 @@ jobs:
           cargo build --release --target ${{ matrix.target }}
 
   test:
+    runs-on: ubuntu-latest
     strategy:
         fail-fast: false
         matrix:
             target: [riscv64gc-unknown-linux-gnu, armv7-unknown-linux-gnueabihf]
-    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
         working-directory: crates/algorithms/aes
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: Update dependencies
-        run: cargo update
-
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install target Rust toolchain
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
         with:
+            toolchain: stable
             targets: ${{ matrix.target }}
-        name: Install target Rust toolchain
 
-      - name: Install Nix
-        uses: nixbuild/nix-quick-install-action@9f63be77f412a248c9d9a65a4c82cf066cdf8f0c # v35
+      - name: Install cross
+        uses: taiki-e/install-action@b6b84cf49ebfe0176417bdce007c624f0db37f20 # v2.86.2
         with:
-          nix_conf: |
-            keep-env-derivations = true
-            keep-outputs = true
-
-      - name: Restore and save Nix store
-        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
-        with:
-            # restore and save a cache using this key
-            primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
-            # if there's no cache hit, restore a cache by this prefix
-            restore-prefixes-first-match: nix-${{ runner.os }}-
-            # collect garbage until the Nix store size (in bytes) is at most this number
-            # before trying to save a new cache
-            # 1G = 1073741824
-            gc-max-store-size-linux: 1G
-            # do purge caches
-            purge: true
-            # purge all versions of the cache
-            purge-prefixes: nix-${{ runner.os }}-
-            # created more than this number of seconds ago
-            purge-created: 0
-            # or last accessed this duration (ISO 8601 duration format)
-            # before the start of the `Post Restore and save Nix store` phase
-            purge-last-accessed: P1DT12H
-            # except any version with the key that is the same as the `primary-key`
-            purge-primary-key: never
+          tool: cross@0.2.5
 
       - name: Test
         run: |
-          nix-shell --run "cargo test --verbose --target ${{ matrix.target }}"
+          cross test --verbose --target ${{ matrix.target }}
 
       - name: Test Release
         run: |
-          nix-shell --run "cargo test --verbose --target ${{ matrix.target }} --release"
+          cross test --verbose --target ${{ matrix.target }} --release

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1584](https://github.com/celabshq/libcrux/pull/1584): Added a
   `HandshakeError::InsufficientRandomness` variant, now used instead of the generic
   `HandshakeError::CryptoError` when a `TryCryptoRng` fails to provide randomness
+- [#1579](https://github.com/celabshq/libcrux/pull/1579): (Breaking) Align `nonce-control` handshake nonces with default nonces. Breaking, because it changes the wire format of `nonce-control` handshake messages, aligning it with the default one
 
 ## [0.0.10] (2026-07-15)
 

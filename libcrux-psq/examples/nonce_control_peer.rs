@@ -83,7 +83,7 @@ fn run_initiator(stdin: &mut impl Read, stdout: &mut impl Write) {
     let responder_pk = DHPublicKey::from_bytes(&responder_pk_bytes);
 
     let mut rng = rand::rng();
-    let initiator_keys = DHKeyPair::new(&mut rng);
+    let initiator_keys = DHKeyPair::new(&mut rng).unwrap();
 
     let initiator_ciphersuite = CiphersuiteBuilder::new(CIPHERSUITE)
         .longterm_x25519_keys(&initiator_keys)
@@ -142,7 +142,7 @@ fn run_initiator(stdin: &mut impl Read, stdout: &mut impl Write) {
 
 fn run_responder(stdin: &mut impl Read, stdout: &mut impl Write) {
     let mut rng = rand::rng();
-    let responder_keys = DHKeyPair::new(&mut rng);
+    let responder_keys = DHKeyPair::new(&mut rng).unwrap();
 
     // Publish our long-term public key out of band, so the initiator can
     // build its ciphersuite.

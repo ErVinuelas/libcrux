@@ -127,6 +127,9 @@ static INITIALIZED: AtomicU8 = AtomicU8::new(UNINIT);
 /// Initialize CPU detection.
 #[inline(always)]
 pub(super) fn init() {
+    // Implementation partially based on:
+    // https://github.com/rust-lang/rust/blob/e5b95097d9a14bdec7cd9101dde67ee3aad2578a/library/std_detect/src/detect/os/x86.rs#L27
+
     // No cpuid support on Intel SGX
     if cfg!(target_env = "sgx") {
         // We can save ourselves the store of DONE to INITIALIZED here,
@@ -149,15 +152,42 @@ pub(super) fn init() {
         __cpuid_count(leaf, sub_leaf)
     }
 
+    let CpuidResult {
+        eax: max_basic_leaf,
+        ..
+    } = unsafe { cpuid(0) };
+    if max_basic_leaf < 1 {
+        // Earlier Intel 486, CPUID not implemented
+        return;
+    }
+
     // Use compare_exchange to ensure only one thread writes CPU_ID.
     // Other threads spin-wait until initialization is complete.
     if INITIALIZED
         .compare_exchange(UNINIT, IN_PROGRESS, Ordering::AcqRel, Ordering::Acquire)
         .is_ok()
     {
+        // EAX = 1, ECX = 0: Queries "Processor Info and Feature Bits";
+        // Contains information about most x86 features.
+        let basic_features = unsafe { cpuid(1) };
+        // EAX = 7: Queries "Extended Features";
+        // Contains information about bmi,bmi2, and avx2 support.
+        let extended_features = if max_basic_leaf >= 7 {
+            unsafe { cpuid_count(7, 0) }
+        } else {
+            // No extended features available.
+            CpuidResult {
+                eax: 0,
+                ebx: 0,
+                ecx: 0,
+                edx: 0,
+            }
+        };
+        // SAFETY: Access to CPU_ID is guarded by the CAS. Only ever one thread
+        // can be IN_PROGRESS and write to CPU_ID.
         unsafe {
-            CPU_ID = [cpuid(1), cpuid_count(7, 0)];
-        }
+            CPU_ID = [basic_features, extended_features];
+        };
         INITIALIZED.store(DONE, Ordering::Release);
     } else {
         // Spin-wait for the initializing thread to finish.

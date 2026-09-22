@@ -139,7 +139,6 @@ pub(super) fn init() {
         return;
     }
 
-    // XXX: https://github.com/rust-lang/rust/issues/101346
     #[inline(never)]
     unsafe fn cpuid(leaf: u32) -> CpuidResult {
         __cpuid(leaf)

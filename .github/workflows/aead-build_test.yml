@@ -1,11 +1,13 @@
-name: KEM - Build & Test
+name: AEAD - Build & Test
 
 on:
   merge_group:
   push:
     branches: ["main", "dev"]
+    paths: ['crates/primitives/aead', 'chacha20poly1305', 'traits/src/aead']
   pull_request:
     branches: ["main", "dev", "*"]
+    paths: ['crates/primitives/aead', 'chacha20poly1305', 'traits/src/aead']
   workflow_dispatch:
 
 env:
@@ -16,6 +18,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build-intel-mac:
+    if: ${{ github.event_name != 'merge_group' }}
+    runs-on: macos-15-intel
+    defaults:
+      run:
+        shell: bash
+        working-directory: crates/primitives/aead
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: 🛠️ Setup Rust Nightly
+        run: rustup toolchain install nightly
+
+      - name: 🔨 Build
+        run: |
+          rustc --print=cfg
+          cargo build --verbose $RUST_TARGET_FLAG
+
   build:
     if: ${{ github.event_name != 'merge_group' }}
     strategy:
@@ -23,15 +43,12 @@ jobs:
       matrix:
         bits: [32, 64]
         os:
-          - macos-15-intel # Intel mac
           - macos-latest # macos-15 on apple silicon
           - ubuntu-latest
           - windows-latest
         exclude:
           - bits: 32
             os: "macos-latest"
-          - bits: 32
-            os: "macos-15-intel"
           - bits: 32 # FIXME: Linking isn't working here yet for hacl #42
             os: "windows-latest"
 
@@ -39,10 +56,10 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: libcrux-kem
+        working-directory: crates/primitives/aead
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - run: echo "RUST_TARGET_FLAG=" > $GITHUB_ENV
         if: ${{ matrix.bits == 64 }}
@@ -69,6 +86,12 @@ jobs:
         if: ${{ matrix.bits == 32 && matrix.os == 'ubuntu-latest' }}
 
       # Build ...
+
+      - name: 🧐 Check Secret Independene
+        run: |
+          rustc --print=cfg
+          cargo check --verbose -F check-secret-independence -p libcrux-aead
+          cargo check --verbose -F check-secret-independence -p libcrux-chacha20poly1305
 
       - name: 🔨 Build
         run: |
@@ -108,7 +131,7 @@ jobs:
         run: |
           cargo clean
           LIBCRUX_DISABLE_SIMD128=1 LIBCRUX_DISABLE_SIMD256=1 cargo test --verbose --release $RUST_TARGET_FLAG
-  kem-build-test-status:
+  aead-build-test-status:
     if: ${{ always() }}
     needs: [build]
     runs-on: ubuntu-latest

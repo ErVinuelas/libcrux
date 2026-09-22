@@ -1,6 +1,9 @@
-name: PSQ - Build & Test
+name: ML-DSA - Build & Test
 
 on:
+  merge_group:
+  push:
+    branches: ["main", "dev"]
   pull_request:
     branches: ["main", "dev", "*"]
   workflow_dispatch:
@@ -23,6 +26,7 @@ jobs:
           - macos-15-intel # Intel mac
           - macos-latest # macos-15 on apple silicon
           - ubuntu-latest
+          - ubuntu-24.04-arm
           - windows-latest
         exclude:
           - bits: 32
@@ -34,10 +38,13 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: libcrux-psq
+        working-directory: libcrux-ml-dsa
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Update dependencies
+        run: cargo update
 
       - run: echo "RUST_TARGET_FLAG=" > $GITHUB_ENV
         if: ${{ matrix.bits == 64 }}
@@ -73,26 +80,28 @@ jobs:
       - name: 🔨 Build Release
         run: cargo build --verbose --release $RUST_TARGET_FLAG
 
-      # NOTE: Nonce control interoperability tests skipped, since they
-      # build test binaries internally, which doesn't work as is under
-      # ASAN.
       - name: 🏃🏻 Asan MacOS
         if: ${{ matrix.os == 'macos-latest' }}
-        run: RUSTDOCFLAGS=-Zsanitizer=address RUSTFLAGS=-Zsanitizer=address cargo +nightly test --release --target aarch64-apple-darwin -- --skip nonce_control_initiator_interoperates_with_default_responder --skip default_initiator_interoperates_with_nonce_control_responder
+        run: RUSTDOCFLAGS=-Zsanitizer=address RUSTFLAGS=-Zsanitizer=address cargo +nightly test --release --target aarch64-apple-darwin
 
-      # Test ...
+      # Test ML-DSA
 
       - name: 🏃🏻‍♀️ Test
         run: |
           cargo clean
-          cargo test --all-features --verbose $RUST_TARGET_FLAG
+          cargo test --verbose --features acvp $RUST_TARGET_FLAG
 
       - name: 🏃🏻‍♀️ Test Release
         run: |
           cargo clean
-          cargo test --all-features --verbose --release $RUST_TARGET_FLAG
+          cargo test --verbose --release --features acvp $RUST_TARGET_FLAG
 
-  psq-build-test-status:
+      # Benchmarks
+      - name: 🔨 Build Benchmarks
+        run: |
+          cargo bench --no-run
+  
+  mldsa-build-test-status:
     if: ${{ always() }}
     needs: [build]
     runs-on: ubuntu-latest

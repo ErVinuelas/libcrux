@@ -1,4 +1,4 @@
-name: ML-DSA - Build & Test
+name: ECDH - Build & Test
 
 on:
   merge_group:
@@ -26,25 +26,23 @@ jobs:
           - macos-15-intel # Intel mac
           - macos-latest # macos-15 on apple silicon
           - ubuntu-latest
-          - ubuntu-24.04-arm
           - windows-latest
         exclude:
           - bits: 32
             os: "macos-latest"
           - bits: 32
             os: "macos-15-intel"
+          - bits: 32 # FIXME: Linking isn't working here yet for hacl #42
+            os: "windows-latest"
 
     runs-on: ${{ matrix.os }}
     defaults:
       run:
         shell: bash
-        working-directory: libcrux-ml-dsa
+        working-directory: libcrux-ecdh
 
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Update dependencies
-        run: cargo update
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - run: echo "RUST_TARGET_FLAG=" > $GITHUB_ENV
         if: ${{ matrix.bits == 64 }}
@@ -84,26 +82,57 @@ jobs:
         if: ${{ matrix.os == 'macos-latest' }}
         run: RUSTDOCFLAGS=-Zsanitizer=address RUSTFLAGS=-Zsanitizer=address cargo +nightly test --release --target aarch64-apple-darwin
 
-      # Test ML-DSA
+      # - name: ⬆ Upload build
+      #   uses: ./.github/actions/upload_artifacts
+      #   with:
+      #     name: build_${{ matrix.os }}_${{ matrix.bits }}
+
+      # Test ...
 
       - name: 🏃🏻‍♀️ Test
         run: |
           cargo clean
-          cargo test --verbose --features acvp $RUST_TARGET_FLAG
+          cargo test --verbose $RUST_TARGET_FLAG
 
       - name: 🏃🏻‍♀️ Test Release
         run: |
           cargo clean
-          cargo test --verbose --release --features acvp $RUST_TARGET_FLAG
+          cargo test --verbose --release $RUST_TARGET_FLAG
 
-      # Benchmarks
-      - name: 🔨 Build Benchmarks
+      - name: 🏃🏻‍♀️ Test Portable
         run: |
-          cargo bench --no-run
+          cargo clean
+          LIBCRUX_DISABLE_SIMD128=1 LIBCRUX_DISABLE_SIMD256=1 cargo test --verbose $RUST_TARGET_FLAG
+
+      - name: 🏃🏻‍♀️ Test Portable Release
+        run: |
+          cargo clean
+          LIBCRUX_DISABLE_SIMD128=1 LIBCRUX_DISABLE_SIMD256=1 cargo test --verbose --release $RUST_TARGET_FLAG
+
+  build-no_std:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: libcrux-ecdh
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Add no_std target
+        run: rustup target add thumbv6m-none-eabi
+        
+      - name: Update dependencies
+        run: cargo update
+
+      - name: 🔨 Build
+        run: |
+          rustc --print=cfg
+          cargo check --lib --no-default-features --verbose --target thumbv6m-none-eabi
   
-  mldsa-build-test-status:
+  ecdh-build-test-status:
     if: ${{ always() }}
-    needs: [build]
+    needs: [build, build-no_std]
     runs-on: ubuntu-latest
     steps:
       - name: Successful

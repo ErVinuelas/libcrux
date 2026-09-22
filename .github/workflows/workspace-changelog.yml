@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Check for [skip changelog] tag in PR body
         id: skip_check
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const body = context.payload.pull_request.body || "";
@@ -27,7 +27,7 @@ jobs:
 
       - name: Checkout full git history
         if: steps.skip_check.outputs.skip == 'false'
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
@@ -62,7 +62,7 @@ jobs:
 
       - name: Fail with markdown error
         if: failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const msg = require('fs').readFileSync('error-message', 'utf8');

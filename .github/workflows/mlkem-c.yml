@@ -20,8 +20,8 @@ jobs:
     if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dorny/paths-filter@v4
         id: changes
         with:
           filters: |
@@ -65,7 +65,7 @@ jobs:
         working-directory: libcrux-ml-kem/extracts/c
         shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Extract C
         run: |
@@ -73,7 +73,7 @@ jobs:
           ./extract.sh
 
       - name: Upload C extraction
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: c-extraction-ml-kem
           path: libcrux-ml-kem/extracts/c/generated
@@ -91,7 +91,7 @@ jobs:
         working-directory: libcrux-ml-kem/extracts/c_header_only
         shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Extract C (header only)
         run: |
@@ -99,7 +99,7 @@ jobs:
           ./extract.sh
 
       - name: Upload C extraction (header only)
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: c-ho-extraction-ml-kem
           path: libcrux-ml-kem/extracts/c_header_only/generated
@@ -117,7 +117,7 @@ jobs:
         working-directory: libcrux-ml-kem/extracts/cpp_header_only
         shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Extract C++
         run: |
@@ -125,7 +125,7 @@ jobs:
           ./extract.sh --no-clean
 
       - name: Upload C++ extraction
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: cpp-ho-extraction-ml-kem
           path: libcrux-ml-kem/extracts/cpp_header_only/generated
@@ -140,16 +140,16 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: cpp-ho-extraction-ml-kem
           path: ~/mlkem-cpp-extraction
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: c-ho-extraction-ml-kem
           path: ~/mlkem-c-extraction
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Diff Extraction C++
         run: |
@@ -177,7 +177,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: c-extraction-ml-kem
 
@@ -222,7 +222,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: c-ho-extraction-ml-kem
 
@@ -259,7 +259,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: cpp-ho-extraction-ml-kem
 

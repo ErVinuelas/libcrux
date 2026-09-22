@@ -1,13 +1,11 @@
-name: AEAD - Build & Test
+name: Traits - Build
 
 on:
   merge_group:
   push:
     branches: ["main", "dev"]
-    paths: ['crates/primitives/aead', 'chacha20poly1305', 'traits/src/aead']
   pull_request:
     branches: ["main", "dev", "*"]
-    paths: ['crates/primitives/aead', 'chacha20poly1305', 'traits/src/aead']
   workflow_dispatch:
 
 env:
@@ -18,24 +16,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-intel-mac:
-    if: ${{ github.event_name != 'merge_group' }}
-    runs-on: macos-15-intel
-    defaults:
-      run:
-        shell: bash
-        working-directory: crates/primitives/aead
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: 🛠️ Setup Rust Nightly
-        run: rustup toolchain install nightly
-
-      - name: 🔨 Build
-        run: |
-          rustc --print=cfg
-          cargo build --verbose $RUST_TARGET_FLAG
-
   build:
     if: ${{ github.event_name != 'merge_group' }}
     strategy:
@@ -43,12 +23,15 @@ jobs:
       matrix:
         bits: [32, 64]
         os:
+          - macos-15-intel # Intel mac
           - macos-latest # macos-15 on apple silicon
           - ubuntu-latest
           - windows-latest
         exclude:
           - bits: 32
             os: "macos-latest"
+          - bits: 32
+            os: "macos-15-intel"
           - bits: 32 # FIXME: Linking isn't working here yet for hacl #42
             os: "windows-latest"
 
@@ -56,10 +39,10 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: crates/primitives/aead
+        working-directory: traits
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - run: echo "RUST_TARGET_FLAG=" > $GITHUB_ENV
         if: ${{ matrix.bits == 64 }}
@@ -87,53 +70,45 @@ jobs:
 
       # Build ...
 
-      - name: 🧐 Check Secret Independene
-        run: |
-          rustc --print=cfg
-          cargo check --verbose -F check-secret-independence -p libcrux-aead
-          cargo check --verbose -F check-secret-independence -p libcrux-chacha20poly1305
-
       - name: 🔨 Build
         run: |
           rustc --print=cfg
           cargo build --verbose $RUST_TARGET_FLAG
+          cargo build --verbose $RUST_TARGET_FLAG -F error-in-core
 
       - name: 🔨 Build Release
-        run: cargo build --verbose --release $RUST_TARGET_FLAG
+        run: |
+          cargo build --verbose --release $RUST_TARGET_FLAG
+          cargo build --verbose --release $RUST_TARGET_FLAG -F error-in-core
 
       - name: 🏃🏻 Asan MacOS
         if: ${{ matrix.os == 'macos-latest' }}
         run: RUSTDOCFLAGS=-Zsanitizer=address RUSTFLAGS=-Zsanitizer=address cargo +nightly test --release --target aarch64-apple-darwin
 
-      # - name: ⬆ Upload build
-      #   uses: ./.github/actions/upload_artifacts
-      #   with:
-      #     name: build_${{ matrix.os }}_${{ matrix.bits }}
+  build-no_std:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: traits
 
-      # Test ...
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: 🏃🏻‍♀️ Test
+      - name: Add no_std target
+        run: rustup target add thumbv6m-none-eabi
+        
+      - name: Update dependencies
+        run: cargo update
+
+      - name: 🔨 Build
         run: |
-          cargo clean
-          cargo test --verbose $RUST_TARGET_FLAG
+          rustc --print=cfg
+          cargo check --lib --verbose --target thumbv6m-none-eabi
 
-      - name: 🏃🏻‍♀️ Test Release
-        run: |
-          cargo clean
-          cargo test --verbose --release $RUST_TARGET_FLAG
-
-      - name: 🏃🏻‍♀️ Test Portable
-        run: |
-          cargo clean
-          LIBCRUX_DISABLE_SIMD128=1 LIBCRUX_DISABLE_SIMD256=1 cargo test --verbose $RUST_TARGET_FLAG
-
-      - name: 🏃🏻‍♀️ Test Portable Release
-        run: |
-          cargo clean
-          LIBCRUX_DISABLE_SIMD128=1 LIBCRUX_DISABLE_SIMD256=1 cargo test --verbose --release $RUST_TARGET_FLAG
-  aead-build-test-status:
+  traits-build-status:
     if: ${{ always() }}
-    needs: [build]
+    needs: [build, build-no_std]
     runs-on: ubuntu-latest
     steps:
       - name: Successful

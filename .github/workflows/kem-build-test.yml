@@ -1,4 +1,4 @@
-name: ECDH - Build & Test
+name: KEM - Build & Test
 
 on:
   merge_group:
@@ -39,10 +39,10 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: libcrux-ecdh
+        working-directory: libcrux-kem
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - run: echo "RUST_TARGET_FLAG=" > $GITHUB_ENV
         if: ${{ matrix.bits == 64 }}
@@ -108,8 +108,7 @@ jobs:
         run: |
           cargo clean
           LIBCRUX_DISABLE_SIMD128=1 LIBCRUX_DISABLE_SIMD256=1 cargo test --verbose --release $RUST_TARGET_FLAG
-  
-  ecdh-build-test-status:
+  kem-build-test-status:
     if: ${{ always() }}
     needs: [build]
     runs-on: ubuntu-latest

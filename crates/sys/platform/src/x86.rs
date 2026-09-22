@@ -6,7 +6,7 @@
 use core::arch::x86::{__cpuid, __cpuid_count, CpuidResult};
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::{__cpuid, __cpuid_count, CpuidResult};
-use core::sync::atomic::{AtomicU8, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
@@ -48,81 +48,117 @@ pub(super) enum Feature {
 /// Check hardware [`Feature`] support.
 pub(super) fn supported(feature: Feature) -> bool {
     init();
-    let cpu_id_0 = unsafe { CPU_ID[0] };
-    let cpu_id_1 = unsafe { CPU_ID[1] };
+    let leaf1_ecx = FEATURE_BITS.leaf1_ecx();
+    let leaf1_edx = FEATURE_BITS.leaf1_edx();
+    let leaf7_ebx = FEATURE_BITS.leaf7_ebx();
     match feature {
-        Feature::mmx => cpu_id_0.edx & (1 << 23) != 0,
-        Feature::sse => cpu_id_0.edx & (1 << 25) != 0,
-        Feature::sse2 => cpu_id_0.edx & (1 << 26) != 0,
-        Feature::sse3 => cpu_id_0.ecx & (1 << 0) != 0,
-        Feature::pclmulqdq => cpu_id_0.ecx & (1 << 1) != 0,
-        Feature::ssse3 => cpu_id_0.ecx & (1 << 9) != 0,
-        Feature::fma => cpu_id_0.ecx & (1 << 12) != 0,
-        Feature::movbe => cpu_id_0.ecx & (1 << 22) != 0,
-        Feature::sse4_1 => cpu_id_0.ecx & (1 << 19) != 0,
-        Feature::sse4_2 => cpu_id_0.ecx & (1 << 20) != 0,
-        Feature::popcnt => cpu_id_0.ecx & (1 << 23) != 0,
-        Feature::aes => cpu_id_0.ecx & (1 << 25) != 0,
-        Feature::xsave => cpu_id_0.ecx & (1 << 26) != 0,
-        Feature::osxsave => cpu_id_0.ecx & (1 << 27) != 0,
+        Feature::mmx => leaf1_edx & (1 << 23) != 0,
+        Feature::sse => leaf1_edx & (1 << 25) != 0,
+        Feature::sse2 => leaf1_edx & (1 << 26) != 0,
+        Feature::sse3 => leaf1_ecx & (1 << 0) != 0,
+        Feature::pclmulqdq => leaf1_ecx & (1 << 1) != 0,
+        Feature::ssse3 => leaf1_ecx & (1 << 9) != 0,
+        Feature::fma => leaf1_ecx & (1 << 12) != 0,
+        Feature::movbe => leaf1_ecx & (1 << 22) != 0,
+        Feature::sse4_1 => leaf1_ecx & (1 << 19) != 0,
+        Feature::sse4_2 => leaf1_ecx & (1 << 20) != 0,
+        Feature::popcnt => leaf1_ecx & (1 << 23) != 0,
+        Feature::aes => leaf1_ecx & (1 << 25) != 0,
+        Feature::xsave => leaf1_ecx & (1 << 26) != 0,
+        Feature::osxsave => leaf1_ecx & (1 << 27) != 0,
         Feature::avx => {
-            cpu_id_0.ecx & (1 << 28) != 0
-                && supported(Feature::xsave)
-                && supported(Feature::osxsave)
+            leaf1_ecx & (1 << 28) != 0 && supported(Feature::xsave) && supported(Feature::osxsave)
         }
-        Feature::rdrand => cpu_id_0.ecx & (1 << 30) != 0,
-        Feature::sgx => cpu_id_1.ebx & (1 << 2) != 0,
-        Feature::bmi1 => cpu_id_1.ebx & (1 << 3) != 0,
+        Feature::rdrand => leaf1_ecx & (1 << 30) != 0,
+        Feature::sgx => leaf7_ebx & (1 << 2) != 0,
+        Feature::bmi1 => leaf7_ebx & (1 << 3) != 0,
         Feature::avx2 => {
-            cpu_id_1.ebx & (1 << 5) != 0
+            leaf7_ebx & (1 << 5) != 0
                 && supported(Feature::bmi1)
                 && supported(Feature::bmi2)
                 && supported(Feature::fma)
                 && supported(Feature::movbe)
         }
-        Feature::bmi2 => cpu_id_1.ebx & (1 << 8) != 0,
-        Feature::avx512f => cpu_id_1.ebx & (1 << 16) != 0,
-        Feature::avx512dq => cpu_id_1.ebx & (1 << 17) != 0,
-        Feature::rdseed => cpu_id_1.ebx & (1 << 18) != 0,
-        Feature::adx => cpu_id_1.ebx & (1 << 19) != 0,
-        Feature::avx512ifma => cpu_id_1.ebx & (1 << 21) != 0,
-        Feature::avx512pf => cpu_id_1.ebx & (1 << 26) != 0,
-        Feature::avx512er => cpu_id_1.ebx & (1 << 27) != 0,
-        Feature::avx512cd => cpu_id_1.ebx & (1 << 28) != 0,
-        Feature::sha => cpu_id_1.ebx & (1 << 29) != 0,
-        Feature::avx512bw => cpu_id_1.ebx & (1 << 30) != 0,
-        Feature::avx512vl => cpu_id_1.ebx & (1 << 31) != 0,
+        Feature::bmi2 => leaf7_ebx & (1 << 8) != 0,
+        Feature::avx512f => leaf7_ebx & (1 << 16) != 0,
+        Feature::avx512dq => leaf7_ebx & (1 << 17) != 0,
+        Feature::rdseed => leaf7_ebx & (1 << 18) != 0,
+        Feature::adx => leaf7_ebx & (1 << 19) != 0,
+        Feature::avx512ifma => leaf7_ebx & (1 << 21) != 0,
+        Feature::avx512pf => leaf7_ebx & (1 << 26) != 0,
+        Feature::avx512er => leaf7_ebx & (1 << 27) != 0,
+        Feature::avx512cd => leaf7_ebx & (1 << 28) != 0,
+        Feature::sha => leaf7_ebx & (1 << 29) != 0,
+        Feature::avx512bw => leaf7_ebx & (1 << 30) != 0,
+        Feature::avx512vl => leaf7_ebx & (1 << 31) != 0,
     }
 }
 
-// Guarded by INITIALIZED; always use load-acquire and store-release access to guarantee atomicity.
-static mut CPU_ID: [CpuidResult; 2] = [
-    CpuidResult {
-        eax: 0,
-        ebx: 0,
-        ecx: 0,
-        edx: 0,
-    },
-    CpuidResult {
-        eax: 0,
-        ebx: 0,
-        ecx: 0,
-        edx: 0,
-    },
-];
-
-/// `INITIALIZED` has not been set yet; `CPU_ID` contains no valid data.
-const UNINIT: u8 = 0;
-/// One thread won the compare_exchange race and is currently writing `CPU_ID`.
-const IN_PROGRESS: u8 = 1;
-/// `CPU_ID` has been fully written and is safe to read.
-const DONE: u8 = 2;
-
-/// Guards access to `CPU_ID`.
+/// The `cpuid` register words holding the feature bits tested by [`supported`].
 ///
-/// Transitions: `UNINIT` → `IN_PROGRESS` (via compare_exchange, exactly one thread) →
-/// `DONE` (store-release, makes `CPU_ID` visible to all subsequent load-acquire readers).
-static INITIALIZED: AtomicU8 = AtomicU8::new(UNINIT);
+/// Only the three registers we actually read are kept, so that the bit tests
+/// can name the register they look at.
+///
+/// # Synchronization
+///
+/// `cpuid` output is a property of the machine, so every thread running
+/// [`init`] writes the very same values here. Racing writers atomically overwrite
+/// [`FEATURE_BITS`] with the same data.
+struct FeatureBits {
+    /// Whether the registers below have been written by [`init`] yet.
+    initialized: AtomicBool,
+    /// Leaf 1, register ECX.
+    leaf1_ecx: AtomicU32,
+    /// Leaf 1, register EDX.
+    leaf1_edx: AtomicU32,
+    /// Leaf 7 sub-leaf 0, register EBX.
+    leaf7_ebx: AtomicU32,
+}
+
+impl FeatureBits {
+    /// All registers zeroed, i.e. reporting no feature as supported.
+    const fn uninit() -> Self {
+        Self {
+            initialized: AtomicBool::new(false),
+            leaf1_ecx: AtomicU32::new(0),
+            leaf1_edx: AtomicU32::new(0),
+            leaf7_ebx: AtomicU32::new(0),
+        }
+    }
+
+    /// Whether the registers hold their final values.
+    fn is_initialized(&self) -> bool {
+        self.initialized.load(Ordering::Acquire)
+    }
+
+    /// Store the registers and mark them as initialized.
+    fn publish(&self, leaf1: CpuidResult, leaf7: CpuidResult) {
+        self.leaf1_ecx.store(leaf1.ecx, Ordering::Relaxed);
+        self.leaf1_edx.store(leaf1.edx, Ordering::Relaxed);
+        self.leaf7_ebx.store(leaf7.ebx, Ordering::Relaxed);
+        // This makes the preceding relaxed stores visible for any other
+        // thread that observes a true from `is_initialized`.
+        self.initialized.store(true, Ordering::Release);
+    }
+
+    // The reads below are `Relaxed`: callers reach them through `init`, whose
+    // load-acquire on `initialized` provides the happens-before edge.
+
+    fn leaf1_ecx(&self) -> u32 {
+        self.leaf1_ecx.load(Ordering::Relaxed)
+    }
+
+    fn leaf1_edx(&self) -> u32 {
+        self.leaf1_edx.load(Ordering::Relaxed)
+    }
+
+    fn leaf7_ebx(&self) -> u32 {
+        self.leaf7_ebx.load(Ordering::Relaxed)
+    }
+}
+
+/// Feature bits of the running CPU, filled in by [`init`].
+static FEATURE_BITS: FeatureBits = FeatureBits::uninit();
 
 /// Initialize CPU detection.
 #[inline(always)]
@@ -132,67 +168,55 @@ pub(super) fn init() {
 
     // No cpuid support on Intel SGX
     if cfg!(target_env = "sgx") {
-        // We can save ourselves the store of DONE to INITIALIZED here,
-        // on this target every caller just immediately returns, and the
-        // bit tests for the features will return false.
+        // We can save ourselves publishing anything here; on this target every
+        // caller just immediately returns, `FEATURE_BITS` stays zeroed, and the bit
+        // tests for the features will return false.
         return;
     }
 
-    if INITIALIZED.load(Ordering::Acquire) == DONE {
+    if FEATURE_BITS.is_initialized() {
         return;
     }
 
+    // If `FEATURE_BITS.initialized` is false, multiple threads might call `init_slow`
+    // at the same time. This is fine, as the stores to FEATURE_BITS are all atomic
+    // and different threads will always write the same results.
+    //
+    // Put the slow path into an inline(never) function so we don't
+    // bloat the code size at each usage site of init.
     #[inline(never)]
-    unsafe fn cpuid(leaf: u32) -> CpuidResult {
-        __cpuid(leaf)
-    }
+    fn init_slow() {
+        /// Stand-in for a leaf the CPU does not implement; reports no feature.
+        const UNSUPPORTED_LEAF: CpuidResult = CpuidResult {
+            eax: 0,
+            ebx: 0,
+            ecx: 0,
+            edx: 0,
+        };
 
-    #[inline(never)]
-    unsafe fn cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
-        __cpuid_count(leaf, sub_leaf)
-    }
+        // EAX = 0: Queries the highest basic leaf this CPU implements.
+        let CpuidResult {
+            eax: max_basic_leaf,
+            ..
+        } = __cpuid(0);
 
-    let CpuidResult {
-        eax: max_basic_leaf,
-        ..
-    } = unsafe { cpuid(0) };
-    if max_basic_leaf < 1 {
-        // Earlier Intel 486, CPUID not implemented
-        return;
-    }
-
-    // Use compare_exchange to ensure only one thread writes CPU_ID.
-    // Other threads spin-wait until initialization is complete.
-    if INITIALIZED
-        .compare_exchange(UNINIT, IN_PROGRESS, Ordering::AcqRel, Ordering::Acquire)
-        .is_ok()
-    {
         // EAX = 1, ECX = 0: Queries "Processor Info and Feature Bits";
         // Contains information about most x86 features.
-        let basic_features = unsafe { cpuid(1) };
-        // EAX = 7: Queries "Extended Features";
-        // Contains information about bmi,bmi2, and avx2 support.
-        let extended_features = if max_basic_leaf >= 7 {
-            unsafe { cpuid_count(7, 0) }
+        let leaf1 = if max_basic_leaf >= 1 {
+            __cpuid(1)
         } else {
-            // No extended features available.
-            CpuidResult {
-                eax: 0,
-                ebx: 0,
-                ecx: 0,
-                edx: 0,
-            }
+            UNSUPPORTED_LEAF
         };
-        // SAFETY: Access to CPU_ID is guarded by the CAS. Only ever one thread
-        // can be IN_PROGRESS and write to CPU_ID.
-        unsafe {
-            CPU_ID = [basic_features, extended_features];
+        // EAX = 7, ECX = 0: Queries "Extended Features";
+        // Contains information about bmi1, bmi2, and avx2 support.
+        let leaf7 = if max_basic_leaf >= 7 {
+            __cpuid_count(7, 0)
+        } else {
+            UNSUPPORTED_LEAF
         };
-        INITIALIZED.store(DONE, Ordering::Release);
-    } else {
-        // Spin-wait for the initializing thread to finish.
-        while INITIALIZED.load(Ordering::Acquire) != DONE {
-            core::hint::spin_loop();
-        }
+
+        FEATURE_BITS.publish(leaf1, leaf7);
     }
+
+    init_slow();
 }

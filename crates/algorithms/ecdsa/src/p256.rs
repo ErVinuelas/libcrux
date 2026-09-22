@@ -1,13 +1,19 @@
 //! ECDSA on P-256
 
 use libcrux_p256::{
-    compressed_to_raw, ecdsa_sign_p256_sha2, ecdsa_sign_p256_sha384, ecdsa_sign_p256_sha512,
-    ecdsa_verif_p256_sha2, ecdsa_verif_p256_sha384, ecdsa_verif_p256_sha512, uncompressed_to_raw,
-    validate_private_key, validate_public_key,
+    compressed_to_raw, dh_initiator, ecdsa_sign_p256_sha2, ecdsa_sign_p256_sha384,
+    ecdsa_sign_p256_sha512, ecdsa_verif_p256_sha2, ecdsa_verif_p256_sha384,
+    ecdsa_verif_p256_sha512, uncompressed_to_raw, validate_private_key, validate_public_key,
 };
 
 use super::Error;
 use crate::DigestAlgorithm;
+
+pub use crate::der::DerSignature;
+
+/// The maximum length of a DER-encoded P-256 `ECDSA-Sig-Value`, as produced by
+/// [`Signature::to_der`].
+pub const DER_SIGNATURE_MAX_LEN: usize = crate::der::MAX_DER_LEN;
 
 /// A P-256 Signature
 #[derive(Clone, Default)]
@@ -28,6 +34,7 @@ pub struct PublicKey(pub [u8; 64]);
 
 mod conversions {
     use super::*;
+    use crate::der::{der_to_raw, raw_to_der};
 
     impl Signature {
         /// Generate a signature from the raw values r and s.
@@ -46,6 +53,34 @@ mod conversions {
         /// Get the signature as the two raw 32 bytes `(r, s)`.
         pub fn as_bytes(&self) -> (&[u8; 32], &[u8; 32]) {
             (&self.r, &self.s)
+        }
+
+        /// Encode this signature as a DER `ECDSA-Sig-Value`.
+        ///
+        /// The result derefs to the encoded bytes, which are never longer than
+        /// [`DER_SIGNATURE_MAX_LEN`].
+        ///
+        /// ```
+        /// use libcrux_ecdsa::p256::Signature;
+        ///
+        /// let signature = Signature::from_raw([0x01; 32], [0x80; 32]);
+        /// let der = signature.to_der();
+        ///
+        /// // SEQUENCE, then `r` (no sign byte) and `s` (high bit set, so padded).
+        /// assert_eq!(der[0], 0x30);
+        /// assert_eq!(Signature::from_der(&der).unwrap().as_bytes(), signature.as_bytes());
+        /// ```
+        pub fn to_der(&self) -> DerSignature {
+            raw_to_der(&self.r, &self.s)
+        }
+
+        /// Decode a signature from a DER `ECDSA-Sig-Value`.
+        ///
+        /// Returns [`Error::InvalidEncoding`] if `der` is not a well-formed
+        /// P-256 `ECDSA-Sig-Value`.
+        pub fn from_der(der: &[u8]) -> Result<Self, Error> {
+            let (r, s) = der_to_raw(der).ok_or(Error::InvalidEncoding)?;
+            Ok(Self { r, s })
         }
     }
 
@@ -74,6 +109,18 @@ mod conversions {
     impl AsRef<[u8; 32]> for PrivateKey {
         fn as_ref(&self) -> &[u8; 32] {
             &self.0
+        }
+    }
+
+    impl PrivateKey {
+        /// Compute the [`PublicKey`] corresponding to this [`PrivateKey`].
+        pub fn public_key(&self) -> Result<PublicKey, Error> {
+            let mut public_key = [0u8; 64];
+            if dh_initiator(&mut public_key, &self.0) {
+                Ok(PublicKey(public_key))
+            } else {
+                Err(Error::InvalidScalar)
+            }
         }
     }
 
@@ -194,7 +241,7 @@ fn validate_private_key_slice(scalar: &[u8]) -> Result<PrivateKey, Error> {
 /// Prepare the nonce for EcDSA and validate the key
 #[cfg(feature = "rand")]
 pub mod rand {
-    use ::rand::CryptoRng;
+    use ::rand::TryCryptoRng;
 
     use super::*;
     use crate::RAND_LIMIT;
@@ -205,7 +252,7 @@ pub mod rand {
     ///
     /// Use [`Nonce::random`] or [`PrivateKey::random`] to generate a nonce or
     /// a private key instead.
-    pub fn random_scalar(rng: &mut impl CryptoRng) -> Result<[u8; 32], Error> {
+    pub fn random_scalar(rng: &mut impl TryCryptoRng) -> Result<[u8; 32], Error> {
         let mut value = [0u8; 32];
         for _ in 0..RAND_LIMIT {
             rng.try_fill_bytes(&mut value)
@@ -221,16 +268,25 @@ pub mod rand {
 
     impl Nonce {
         /// Generate a random nonce for ECDSA.
-        pub fn random(rng: &mut impl CryptoRng) -> Result<Self, Error> {
+        pub fn random(rng: &mut impl TryCryptoRng) -> Result<Self, Error> {
             random_scalar(rng).map(|s| Self(s))
         }
     }
 
     impl PrivateKey {
         /// Generate a random [`PrivateKey`] for ECDSA.
-        pub fn random(rng: &mut impl CryptoRng) -> Result<Self, Error> {
+        pub fn random(rng: &mut impl TryCryptoRng) -> Result<Self, Error> {
             random_scalar(rng).map(|s| Self(s))
         }
+    }
+
+    /// Generate a new ECDSA P-256 key pair.
+    pub fn generate_key_pair(
+        rng: &mut impl TryCryptoRng,
+    ) -> Result<(PrivateKey, PublicKey), Error> {
+        let private_key = PrivateKey::random(rng)?;
+        let public_key = private_key.public_key()?;
+        Ok((private_key, public_key))
     }
 
     /// Sign the `payload` with the `private_key`.
@@ -238,7 +294,7 @@ pub mod rand {
         hash: DigestAlgorithm,
         payload: &[u8],
         private_key: &PrivateKey,
-        rng: &mut impl CryptoRng,
+        rng: &mut impl TryCryptoRng,
     ) -> Result<Signature, Error> {
         let nonce = Nonce(random_scalar(rng)?);
 

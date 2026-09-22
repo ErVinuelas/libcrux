@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - (libcrux-hmac-drbg) [#1558](https://github.com/celabshq/libcrux/pull/1558): fix panic in reseeding wrappers fill_bytes method
+- (libcrux-platform) [#1591](https://github.com/celabshq/libcrux/pull/1591): Avoid data races in x86 feature detection
+- (libcrux-platform) [#1591](https://github.com/celabshq/libcrux/pull/1591): Handle feature detection on Intel SGX and CPUs without cpuid
+- (libcrux-platform) [#1592](https://github.com/celabshq/libcrux/pull/1592): Check xgetbv output for AVX2 availability
 
 ### Changed
 
@@ -23,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   post-quantum and PQ/T-hybrid algorithms of
   [draft-ietf-hpke-pq](https://datatracker.ietf.org/doc/html/draft-ietf-hpke-pq-04),
   in the **libcrux provider only**, behind the new `draft-ietf-hpke-pq` feature.
+- (libcrux-p256) [#1586](https://github.com/celabshq/libcrux/pull/1586): Expose constants used in `Ecdh*` trait implementations
 
 
 ## [0.0.5] (2026-07-15)

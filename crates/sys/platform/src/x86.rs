@@ -127,6 +127,14 @@ static INITIALIZED: AtomicU8 = AtomicU8::new(UNINIT);
 /// Initialize CPU detection.
 #[inline(always)]
 pub(super) fn init() {
+    // No cpuid support on Intel SGX
+    if cfg!(target_env = "sgx") {
+        // We can save ourselves the store of DONE to INITIALIZED here,
+        // on this target every caller just immediately returns, and the
+        // bit tests for the features will return false.
+        return;
+    }
+
     if INITIALIZED.load(Ordering::Acquire) == DONE {
         return;
     }
@@ -148,14 +156,9 @@ pub(super) fn init() {
         .compare_exchange(UNINIT, IN_PROGRESS, Ordering::AcqRel, Ordering::Acquire)
         .is_ok()
     {
-        // XXX[no_std]: no good way to do this in no_std
-        // std::panic::catch_unwind(|| {
-        // If there's no CPU ID because we're in SGX or whatever other reason,
-        // we'll consider the hw detection as initialized but always return false.
         unsafe {
             CPU_ID = [cpuid(1), cpuid_count(7, 0)];
         }
-        // });
         INITIALIZED.store(DONE, Ordering::Release);
     } else {
         // Spin-wait for the initializing thread to finish.

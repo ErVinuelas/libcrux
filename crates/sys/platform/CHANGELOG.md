@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#1591](https://github.com/celabshq/libcrux/pull/1591): Avoid data races in x86 feature detection
 - [#1591](https://github.com/celabshq/libcrux/pull/1591): Handle feature detection on Intel SGX and CPUs without cpuid
+- [#1592](https://github.com/celabshq/libcrux/pull/1592): Check xgetbv output for AVX2 availability
 
 
 ## [0.0.3] (2026-01-12)

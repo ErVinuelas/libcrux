@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (libcrux-hmac-drbg) [#1558](https://github.com/celabshq/libcrux/pull/1558): fix panic in reseeding wrappers fill_bytes method
 - (libcrux-platform) [#1591](https://github.com/celabshq/libcrux/pull/1591): Avoid data races in x86 feature detection
 - (libcrux-platform) [#1591](https://github.com/celabshq/libcrux/pull/1591): Handle feature detection on Intel SGX and CPUs without cpuid
-
+- (libcrux-platform) [#1592](https://github.com/celabshq/libcrux/pull/1592): Check xgetbv output for AVX2 availability
 
 ### Changed
 

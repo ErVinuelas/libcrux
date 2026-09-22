@@ -3,9 +3,9 @@
 #![allow(non_upper_case_globals)]
 
 #[cfg(target_arch = "x86")]
-use core::arch::x86::{__cpuid, __cpuid_count, CpuidResult};
+use core::arch::x86::{__cpuid, __cpuid_count, _xgetbv, CpuidResult};
 #[cfg(target_arch = "x86_64")]
-use core::arch::x86_64::{__cpuid, __cpuid_count, CpuidResult};
+use core::arch::x86_64::{__cpuid, __cpuid_count, _xgetbv, CpuidResult};
 use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 #[allow(non_camel_case_types)]
@@ -51,6 +51,11 @@ pub(super) fn supported(feature: Feature) -> bool {
     let leaf1_ecx = FEATURE_BITS.leaf1_ecx();
     let leaf1_edx = FEATURE_BITS.leaf1_edx();
     let leaf7_ebx = FEATURE_BITS.leaf7_ebx();
+    let xcr0 = FEATURE_BITS.xcr0();
+    // Without the corresponding XCR0 bits the OS does not preserve the wide
+    // registers across context switches and the encodings raise #UD.
+    let os_avx = xcr0 & 0b110 == 0b110;
+    let os_avx512 = xcr0 & 0b1110_0110 == 0b1110_0110;
     match feature {
         Feature::mmx => leaf1_edx & (1 << 23) != 0,
         Feature::sse => leaf1_edx & (1 << 25) != 0,
@@ -67,36 +72,40 @@ pub(super) fn supported(feature: Feature) -> bool {
         Feature::xsave => leaf1_ecx & (1 << 26) != 0,
         Feature::osxsave => leaf1_ecx & (1 << 27) != 0,
         Feature::avx => {
-            leaf1_ecx & (1 << 28) != 0 && supported(Feature::xsave) && supported(Feature::osxsave)
+            leaf1_ecx & (1 << 28) != 0
+                && supported(Feature::xsave)
+                && supported(Feature::osxsave)
+                && os_avx
         }
         Feature::rdrand => leaf1_ecx & (1 << 30) != 0,
         Feature::sgx => leaf7_ebx & (1 << 2) != 0,
         Feature::bmi1 => leaf7_ebx & (1 << 3) != 0,
         Feature::avx2 => {
             leaf7_ebx & (1 << 5) != 0
+                && supported(Feature::avx)
                 && supported(Feature::bmi1)
                 && supported(Feature::bmi2)
                 && supported(Feature::fma)
                 && supported(Feature::movbe)
         }
         Feature::bmi2 => leaf7_ebx & (1 << 8) != 0,
-        Feature::avx512f => leaf7_ebx & (1 << 16) != 0,
-        Feature::avx512dq => leaf7_ebx & (1 << 17) != 0,
+        Feature::avx512f => os_avx512 && leaf7_ebx & (1 << 16) != 0,
+        Feature::avx512dq => os_avx512 && leaf7_ebx & (1 << 17) != 0,
         Feature::rdseed => leaf7_ebx & (1 << 18) != 0,
         Feature::adx => leaf7_ebx & (1 << 19) != 0,
-        Feature::avx512ifma => leaf7_ebx & (1 << 21) != 0,
-        Feature::avx512pf => leaf7_ebx & (1 << 26) != 0,
-        Feature::avx512er => leaf7_ebx & (1 << 27) != 0,
-        Feature::avx512cd => leaf7_ebx & (1 << 28) != 0,
+        Feature::avx512ifma => os_avx512 && leaf7_ebx & (1 << 21) != 0,
+        Feature::avx512pf => os_avx512 && leaf7_ebx & (1 << 26) != 0,
+        Feature::avx512er => os_avx512 && leaf7_ebx & (1 << 27) != 0,
+        Feature::avx512cd => os_avx512 && leaf7_ebx & (1 << 28) != 0,
         Feature::sha => leaf7_ebx & (1 << 29) != 0,
-        Feature::avx512bw => leaf7_ebx & (1 << 30) != 0,
-        Feature::avx512vl => leaf7_ebx & (1 << 31) != 0,
+        Feature::avx512bw => os_avx512 && leaf7_ebx & (1 << 30) != 0,
+        Feature::avx512vl => os_avx512 && leaf7_ebx & (1 << 31) != 0,
     }
 }
 
 /// The `cpuid` register words holding the feature bits tested by [`supported`].
 ///
-/// Only the three registers we actually read are kept, so that the bit tests
+/// Only the three registers + xcr0 we actually read are kept, so that the bit tests
 /// can name the register they look at.
 ///
 /// # Synchronization
@@ -113,6 +122,9 @@ struct FeatureBits {
     leaf1_edx: AtomicU32,
     /// Leaf 7 sub-leaf 0, register EBX.
     leaf7_ebx: AtomicU32,
+    /// Low half of `XCR0`, naming the state the OS saves across context
+    /// switches. Zero if `XGETBV` was not safe to execute.
+    xcr0: AtomicU32,
 }
 
 impl FeatureBits {
@@ -123,6 +135,7 @@ impl FeatureBits {
             leaf1_ecx: AtomicU32::new(0),
             leaf1_edx: AtomicU32::new(0),
             leaf7_ebx: AtomicU32::new(0),
+            xcr0: AtomicU32::new(0),
         }
     }
 
@@ -132,10 +145,11 @@ impl FeatureBits {
     }
 
     /// Store the registers and mark them as initialized.
-    fn publish(&self, leaf1: CpuidResult, leaf7: CpuidResult) {
+    fn publish(&self, leaf1: CpuidResult, leaf7: CpuidResult, xcr0: u32) {
         self.leaf1_ecx.store(leaf1.ecx, Ordering::Relaxed);
         self.leaf1_edx.store(leaf1.edx, Ordering::Relaxed);
         self.leaf7_ebx.store(leaf7.ebx, Ordering::Relaxed);
+        self.xcr0.store(xcr0, Ordering::Relaxed);
         // This makes the preceding relaxed stores visible for any other
         // thread that observes a true from `is_initialized`.
         self.initialized.store(true, Ordering::Release);
@@ -154,6 +168,10 @@ impl FeatureBits {
 
     fn leaf7_ebx(&self) -> u32 {
         self.leaf7_ebx.load(Ordering::Relaxed)
+    }
+
+    fn xcr0(&self) -> u32 {
+        self.xcr0.load(Ordering::Relaxed)
     }
 }
 
@@ -215,7 +233,15 @@ pub(super) fn init() {
             UNSUPPORTED_LEAF
         };
 
-        FEATURE_BITS.publish(leaf1, leaf7);
+        // XGETBV is only executable once the OS has set CR4.OSXSAVE, which is
+        // what CPUID.1:ECX[27] reports.
+        let xcr0 = if leaf1.ecx & (1 << 27) != 0 {
+            unsafe { _xgetbv(0) as u32 }
+        } else {
+            0
+        };
+
+        FEATURE_BITS.publish(leaf1, leaf7, xcr0);
     }
 
     init_slow();

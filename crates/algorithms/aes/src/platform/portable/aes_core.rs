@@ -384,7 +384,7 @@ fn aes_keygen_assisti(rcon: u8, i: usize, u: u16) -> u16 {
 
 #[inline]
 fn aes_keygen_assist(next: &mut State, prev: &State, rcon: u8) {
-    next.copy_from_slice(prev);
+    *next = *prev;
     sub_bytes_state(next);
 
     next[0] = aes_keygen_assisti(rcon, 0, next[0]);

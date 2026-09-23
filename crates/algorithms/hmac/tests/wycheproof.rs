@@ -33,10 +33,14 @@ fn run<const OUTLEN: usize, Digest: HmacState<OUTLEN>>(
             h.update(second).unwrap();
             h.finalize(dst);
             check(t, &dst[..tag_bytes]);
+            // tag_size may be truncated; compare only the prefix
+            let tag_bytes = (group.tag_size / 8) as usize;
+            let computed = &mut dst[..tag_bytes];
+
+            check(t, computed);
 
             // Single shot API
-            let computed = hmac(alg, &t.key, &t.msg, None);
-            let computed = &computed[..tag_bytes];
+            hmac(alg, &t.key, &t.msg, computed);
             check(t, computed);
             tests_run += 1;
         }

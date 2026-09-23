@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- [#90](https://github.com/celabshq/libcrux-evit/pull/90): Add HMAC-SHA-3 support (SHA3-224, SHA3-256, SHA3-384, SHA3-512), including one-shot and streaming/incremental APIs
+- [#1601](https://github.com/celabshq/libcrux/pull/1601): Add HMAC-SHA-3 support (SHA3-224, SHA3-256, SHA3-384, SHA3-512), including one-shot and streaming/incremental APIs
 
 ## [0.0.8] (2026-07-15)
 

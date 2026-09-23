@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- [#62](https://github.com/celabshq/libcrux-evit/pull/62): **breaking** Introduce feature `alloc` that gates any heap allocations
+- [#1601](https://github.com/celabshq/libcrux/pull/1601): **breaking** Introduce feature `alloc` that gates any heap allocations
 
 ## [0.0.5] (2026-05-13)
 

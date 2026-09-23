@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- [#65](https://github.com/celabshq/libcrux/pull/65): Disabled `alloc` feature on dependency `libcrux-hacl-rs` and removed heap allocations
+- [#1603](https://github.com/celabshq/libcrux/pull/1603): Disabled `alloc` feature on dependency `libcrux-hacl-rs` and removed heap allocations
 
 ## [0.0.6] (2026-05-13)
 

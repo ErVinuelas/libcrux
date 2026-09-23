@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- [#66](https://github.com/celabshq/libcrux/pull/66): Crate is free of heap allocations
+- [#1603](https://github.com/celabshq/libcrux/pull/1603): Crate is free of heap allocations
 
 ## [0.0.9] (2026-07-15)
 

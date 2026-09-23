@@ -1,6 +1,6 @@
 //! HMAC
 //!
-//! This crate implements HMAC on SHA 1 and SHA 2 (except for SHA 224).
+//! This crate implements HMAC on SHA 2 (except for SHA 224) and SHA 3.
 #![no_std]
 
 extern crate alloc;
@@ -51,6 +51,9 @@ pub enum Error {
 }
 
 /// The HMAC algorithm defining the used hash function.
+///
+/// * `Sha256`, `Sha384`, and `Sha512` are SHA-2.
+/// * SHA-3 variants are prefixed with `Sha3_`.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Algorithm {
     // Not implemented
@@ -58,6 +61,10 @@ pub enum Algorithm {
     Sha256,
     Sha384,
     Sha512,
+    Sha3_224,
+    Sha3_256,
+    Sha3_384,
+    Sha3_512,
 }
 
 /// Get the tag size for a given algorithm.
@@ -66,6 +73,10 @@ pub const fn tag_size(alg: Algorithm) -> usize {
         Algorithm::Sha256 => 32,
         Algorithm::Sha384 => 48,
         Algorithm::Sha512 => 64,
+        Algorithm::Sha3_224 => 28,
+        Algorithm::Sha3_256 => 32,
+        Algorithm::Sha3_384 => 48,
+        Algorithm::Sha3_512 => 64,
     }
 }
 
@@ -83,6 +94,18 @@ pub fn hmac(alg: Algorithm, key: &[u8], data: &[u8], tag_length: Option<usize>) 
         Algorithm::Sha256 => wrap_bufalloc(|buf| hmac_sha2_256(buf, key, data)),
         Algorithm::Sha384 => wrap_bufalloc(|buf| hmac_sha2_384(buf, key, data)),
         Algorithm::Sha512 => wrap_bufalloc(|buf| hmac_sha2_512(buf, key, data)),
+        Algorithm::Sha3_224 => {
+            wrap_bufalloc(|buf| hmac_sha3_224(buf, key, data).expect("HMAC-SHA3 input too long"))
+        }
+        Algorithm::Sha3_256 => {
+            wrap_bufalloc(|buf| hmac_sha3_256(buf, key, data).expect("HMAC-SHA3 input too long"))
+        }
+        Algorithm::Sha3_384 => {
+            wrap_bufalloc(|buf| hmac_sha3_384(buf, key, data).expect("HMAC-SHA3 input too long"))
+        }
+        Algorithm::Sha3_512 => {
+            wrap_bufalloc(|buf| hmac_sha3_512(buf, key, data).expect("HMAC-SHA3 input too long"))
+        }
     };
     dst.truncate(tag_length);
     dst

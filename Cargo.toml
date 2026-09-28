@@ -80,6 +80,7 @@ members = [
     "traits",
     "crates/algorithms/p384",
     "crates/algorithms/p384/fuzz",
+    "crates/algorithms/nist-kdf",
 ]
 
 # These crates are not part of the main libcrux library.

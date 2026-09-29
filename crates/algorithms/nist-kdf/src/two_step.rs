@@ -9,6 +9,14 @@ use crate::{feedback, KdfError};
 /// and a [feedback mode kdf][`feedback::kdf`] using the same HMAC algorithm for
 /// the key expansion.
 ///
+/// # Salt
+///
+/// SP 800-56Cr2 requires a non-null salt and, in the absence of an agreed-upon
+/// alternative, a default salt consisting of an all-zero byte string of the length
+/// of a single input block of the hash function. An empty `salt` is accepted and is
+/// equivalent to this default salt, because HMAC pads keys shorter than the block
+/// length with zeros.
+///
 /// # Fixed Info
 ///
 /// The fixed info slices are concatenated as-is. No length prefixes or separators are

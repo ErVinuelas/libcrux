@@ -3,7 +3,7 @@
 //! The expected outputs were computed with an independent implementation using
 //! Python's `hmac` module.
 
-use libcrux_hmac::HmacSha256;
+use libcrux_hmac::{HmacSha256, HmacSha512};
 use libcrux_nist_kdf::{feedback, two_step};
 
 const K_IN: [u8; 32] = [
@@ -69,4 +69,21 @@ fn two_step_empty_output() {
     // SP 800-56Cr2 requires L to be a positive integer.
     let mut k_out = [];
     assert!(two_step::kdf::<32, HmacSha256>(&mut k_out, &Z, &SALT, &IV, &[b"info"]).is_err());
+}
+
+#[test]
+fn two_step_empty_salt_is_default_salt() {
+    // SP 800-56Cr2 specifies an all-zero default salt with the length of a single
+    // hash input block. Because HMAC zero-pads short keys, an empty salt is equivalent.
+    let mut k_out_empty = [0; 40];
+    let mut k_out_default = [0; 40];
+    two_step::kdf::<32, HmacSha256>(&mut k_out_empty, &Z, &[], &IV, &[b"info"]).unwrap();
+    two_step::kdf::<32, HmacSha256>(&mut k_out_default, &Z, &[0; 64], &IV, &[b"info"]).unwrap();
+    assert_eq!(k_out_empty, k_out_default);
+
+    let mut k_out_empty = [0; 80];
+    let mut k_out_default = [0; 80];
+    two_step::kdf::<64, HmacSha512>(&mut k_out_empty, &Z, &[], &IV, &[b"info"]).unwrap();
+    two_step::kdf::<64, HmacSha512>(&mut k_out_default, &Z, &[0; 128], &IV, &[b"info"]).unwrap();
+    assert_eq!(k_out_empty, k_out_default);
 }

@@ -9,6 +9,9 @@ pub mod mlkem;
 #[cfg(feature = "kbkdf")]
 pub mod kbkdf;
 
+#[cfg(feature = "kda")]
+pub mod kda;
+
 pub mod schema_common;
 
 #[cfg(any(feature = "mldsa", feature = "mlkem", feature = "kbkdf"))]

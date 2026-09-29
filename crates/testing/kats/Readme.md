@@ -10,6 +10,8 @@ This crate provides KAT test vectors for:
     - verify
 - SP 800-108 KBKDF (acvp)
     - feedback mode, HMAC, 32-bit counter before the fixed data
+- SP 800-56Cr2 two-step KDA (acvp, generated)
+    - HMAC, feedback mode expansion, 32-bit counter before the fixed data
 - ML-KEM (wycheproof)
     - keygen/decaps
     - encaps
@@ -33,6 +35,10 @@ The JSON files for ACVP ML-KEM and ML-DSA were taken from `https://github.com/us
 The JSON files for ACVP SP 800-108 KBKDF were taken from `https://github.com/usnistgov/ACVP-Server` (`gen-val/json-files/KDF-1.0`)
 * As of commit [975de31eb83d87039ec88934fdc47d8c312b892d](https://github.com/usnistgov/ACVP-Server/commit/975de31eb83d87039ec88934fdc47d8c312b892d)
 * Filtered to the test groups listed in `src/acvp/kbkdf.rs`
+
+The JSON files for ACVP SP 800-56Cr2 two-step KDA were generated locally with the `GenValAppRunner` of `https://github.com/usnistgov/ACVP-Server`
+* As of commit [975de31eb83d87039ec88934fdc47d8c312b892d](https://github.com/usnistgov/ACVP-Server/commit/975de31eb83d87039ec88934fdc47d8c312b892d)
+* Using the `registration.json` next to each `prompt.json`
 
 The RSP files for SHA-2 were taken from NISTs [Cryptographic Algorithm Validation Program](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing) (accessed 05.05.2026).
 

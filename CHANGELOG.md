@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [draft-ietf-hpke-pq](https://datatracker.ietf.org/doc/html/draft-ietf-hpke-pq-04),
   in the **libcrux provider only**, behind the new `draft-ietf-hpke-pq` feature.
 - (libcrux-p256) [#1586](https://github.com/celabshq/libcrux/pull/1586): Expose constants used in `Ecdh*` trait implementations
+- (libcrux-nist-kdf) [#1608](https://github.com/celabshq/libcrux/pull/1608): SP 800-108 feedback mode KDF and SP 800-56Cr2 two-step KDF
 
 
 ## [0.0.5] (2026-07-15)

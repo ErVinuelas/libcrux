@@ -12,3 +12,6 @@ repository.workspace = true
 
 [dependencies]
 libcrux-hmac.workspace = true
+
+[dev-dependencies]
+libcrux-kats = { workspace = true, features = ["kbkdf"] }

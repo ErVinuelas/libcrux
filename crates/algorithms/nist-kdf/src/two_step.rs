@@ -37,6 +37,33 @@ use crate::{feedback, KdfError};
 /// - If `shared_secret` or `salt` exceed the maximum input size of the HMAC.
 /// - If [`feedback::kdf`] returns an error.
 ///
+/// # Example
+///
+/// ```
+/// use libcrux_hmac::HmacSha256;
+/// use libcrux_nist_kdf::two_step;
+///
+/// let shared_secret = [0x42; 32];
+/// let salt = [0x07; 32];
+/// let iv = [0x13; 32];
+/// let mut k_out = [0; 42];
+///
+/// // Encode the fixed info as `label || 0x00 || context || L`, with `L`, the
+/// // requested number of bits, encoded as a 32-bit big-endian integer.
+/// let label = b"example label";
+/// let context = b"example context";
+/// let l = u32::try_from(k_out.len() * 8).unwrap().to_be_bytes();
+///
+/// two_step::kdf::<32, HmacSha256>(
+///     &mut k_out,
+///     &shared_secret,
+///     &salt,
+///     &iv,
+///     &[label, &[0x00], context, &l],
+/// )
+/// .unwrap();
+/// ```
+///
 /// [56]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Cr2.pdf
 pub fn kdf<const OUTLEN: usize, H: HmacState<OUTLEN>>(
     k_out: &mut [u8],

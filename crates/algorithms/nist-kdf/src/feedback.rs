@@ -33,6 +33,26 @@ use crate::KdfError;
 /// - If `k_out.len().div_ceil(OUTLEN) > u32::MAX`.
 /// - If `k_in`, `iv` or any `fixed_info` exceeds the maximum input size of the HMAC.
 ///
+/// # Example
+///
+/// ```
+/// use libcrux_hmac::HmacSha256;
+/// use libcrux_nist_kdf::feedback;
+///
+/// let k_in = [0x42; 32];
+/// let iv = [0x13; 32];
+/// let mut k_out = [0; 42];
+///
+/// // Encode the fixed info as `label || 0x00 || context || L`, with `L`, the
+/// // requested number of bits, encoded as a 32-bit big-endian integer.
+/// let label = b"example label";
+/// let context = b"example context";
+/// let l = u32::try_from(k_out.len() * 8).unwrap().to_be_bytes();
+///
+/// feedback::kdf::<32, HmacSha256>(&mut k_out, &k_in, &iv, &[label, &[0x00], context, &l])
+///     .unwrap();
+/// ```
+///
 /// [sp]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-108r1-upd1.pdf
 pub fn kdf<const OUTLEN: usize, H: HmacState<OUTLEN>>(
     mut k_out: &mut [u8],
@@ -41,7 +61,7 @@ pub fn kdf<const OUTLEN: usize, H: HmacState<OUTLEN>>(
     fixed_info: &[&[u8]],
 ) -> Result<(), KdfError> {
     // SP 800-108 computes n := ceil(L/h) where L and h are bits.
-    // Because k_out * 8 = L and OUTLEN = h / 8, i.e. both are in bytes, we can compute
+    // Because k_out.len() * 8 = L and OUTLEN = h / 8, i.e. both are in bytes, we can compute
     // n as follow:
     let n = k_out.len().div_ceil(OUTLEN);
     // Equivalent to checking whether n > u32::MAX.
@@ -58,7 +78,7 @@ pub fn kdf<const OUTLEN: usize, H: HmacState<OUTLEN>>(
         let end = cmp::min(k_out.len(), OUTLEN);
         // Panic-safety:
         // end = min(k_out.len(), OUTLEN) <= k_out.len()
-        // end = min(k_out.len(), OUTLEN) <= k_i_block.len()
+        // end = min(k_out.len(), OUTLEN) <= OUTLEN == k_i_block.len()
         // Therefore the indexes are always safe.
         k_out[..end].copy_from_slice(&k_i_block[..end]);
         k_out = &mut k_out[end..];

@@ -5,6 +5,10 @@ use core::fmt::{Debug, Display};
 pub mod feedback;
 pub mod two_step;
 
+/// Opaque error returned by [`feedback::kdf`] and [`two_step::kdf`].
+///
+/// Please refer to the documentation of the individual `kdf` functions for their
+/// error conditions.
 #[derive(Debug)]
 pub struct KdfError;
 

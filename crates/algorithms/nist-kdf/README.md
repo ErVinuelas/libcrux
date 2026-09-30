@@ -11,3 +11,7 @@ The implemented subset is:
 
 [108]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-108r1-upd1.pdf
 [56]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Cr2.pdf
+
+# `no_std`
+
+This crate can be used in `no_std` context.

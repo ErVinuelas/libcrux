@@ -11,6 +11,7 @@ cargo build \
   -p libcrux-hacl-rs \
   -p libcrux-hkdf \
   -p libcrux-hmac \
+  -p libcrux-nist-kdf \
   -p libcrux-intrinsics \
   -p libcrux-sha3 \
   -p libcrux-p256 \

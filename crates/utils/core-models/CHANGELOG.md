@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- [#1498](https://github.com/celabshq/libcrux/pull/1498): Fix `_mm256_bsrli_epi128` shift logic
 ## [0.0.7] (2026-07-15)
 
 - [#1506](https://github.com/celabshq/libcrux/pull/1506): Update dependency: `hax-lib`

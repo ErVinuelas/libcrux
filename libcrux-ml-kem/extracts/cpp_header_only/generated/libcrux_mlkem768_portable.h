@@ -8,7 +8,7 @@
  * Eurydice: aaa9fa657fb6f09802edb890252040d94cd93982
  * Karamel: 8c19d41458ce5cbfea029ebc03334ba96d149039
  * F*: 7b347386330d0e5a331a220535b6f15288903234
- * Libcrux: b9ffe96702a2c9bbc73a573b3df838d1b2607fd1
+ * Libcrux: 517c2c298693bf42e480b5fbb8105033a7130efc
  */
 
 #ifndef libcrux_mlkem768_portable_H
@@ -226,7 +226,6 @@ libcrux_ml_kem_vector_portable_cond_subtract_3329_b8(Eurydice_arr_d6 v) {
 
  Note: The input bound is 28296 to prevent overflow in the multiplication of
  quotient by FIELD_MODULUS
-
 */
 static inline int16_t
 libcrux_ml_kem_vector_portable_arithmetic_barrett_reduce_element(
@@ -277,7 +276,6 @@ static inline Eurydice_arr_d6 libcrux_ml_kem_vector_portable_barrett_reduce_b8(
  In particular, if `|value| ≤ FIELD_MODULUS-1 * FIELD_MODULUS-1`, then `|o| <=
  FIELD_MODULUS-1`. And, if `|value| ≤ pow2 16 * FIELD_MODULUS-1`, then `|o| <=
  FIELD_MODULUS + 1664
-
 */
 static inline int16_t
 libcrux_ml_kem_vector_portable_arithmetic_montgomery_reduce_element(

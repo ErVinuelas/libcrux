@@ -80,6 +80,7 @@ members = [
     "traits",
     "crates/algorithms/p384",
     "crates/algorithms/p384/fuzz",
+    "crates/algorithms/nist-kdf",
 ]
 
 # These crates are not part of the main libcrux library.
@@ -106,7 +107,7 @@ readme = "Readme.md"
 allow-branch = ["main"]
 
 [workspace.dependencies]
-hax-lib = { version = "0.3.7" }
+hax-lib = { version = "0.4.1" }
 libcrux-aead = { version = "=0.0.9", path = "crates/primitives/aead" }
 libcrux-aes = { version = "=0.0.9", path = "crates/algorithms/aes" }
 libcrux-blake2 = { version = "=0.0.8", path = "crates/algorithms/blake2" }
@@ -119,6 +120,7 @@ libcrux-hkdf = { version = "=0.0.8", path = "crates/algorithms/hkdf" }
 libcrux-hmac = { version = "=0.0.8", path = "crates/algorithms/hmac" }
 libcrux-hmac-drbg = { version = "=0.0.1", path = "crates/algorithms/hmac-drbg" }
 libcrux-kmac = { version = "=0.0.1", path = "crates/algorithms/kmac" }
+libcrux-nist-kdf = { version = "=0.0.1", path = "crates/algorithms/nist-kdf" }
 libcrux-intrinsics = { version = "=0.0.8", path = "crates/utils/intrinsics" }
 libcrux-digest = { version = "=0.0.9", path = "crates/primitives/digest" }
 libcrux-rsa = { version = "=0.0.8", path = "crates/algorithms/rsa" }
@@ -152,7 +154,9 @@ libcrux-macros = { version = "=0.0.3", path = "crates/utils/macros" }
 libcrux-secrets = { version = "=0.0.6", path = "crates/utils/secrets" }
 
 # Encodings
- tls_codec = { version = "0.5.0", features = ["derive"], default-features = false }
+tls_codec = { version = "0.5.0", features = [
+    "derive",
+], default-features = false }
 
 # 3rd Party
 rand = { version = "0.10", default-features = false }
@@ -190,6 +194,7 @@ all_algorithms = [
     "rsapss",
     "poly1305",
     "hmac_drbg",
+    "nist_kdf",
 ]
 aes_aead = []
 blake2 = []
@@ -208,6 +213,7 @@ mldsa = []
 rsapss = []
 poly1305 = []
 hmac_drbg = []
+nist_kdf = []
 
 # Primitives
 all_primitives = ["aead", "digest", "kem"]
@@ -222,9 +228,6 @@ psq = []
 
 [dependencies]
 getrandom = { version = "0.4", optional = true }
-
-# Proofs
-hax-lib.workspace = true
 
 # External Cryspen code.
 hpke-rs = { workspace = true, features = ["libcrux"] }
@@ -247,6 +250,7 @@ libcrux-hkdf.workspace = true
 libcrux-hmac.workspace = true
 libcrux-hmac-drbg.workspace = true
 libcrux-kmac.workspace = true
+libcrux-nist-kdf.workspace = true
 libcrux-ml-kem.workspace = true
 libcrux-ml-dsa.workspace = true
 libcrux-p256.workspace = true
@@ -259,6 +263,9 @@ libcrux-psq.workspace = true
 
 # WASM API
 wasm-bindgen = { version = "0.2.87", optional = true }
+
+[target.'cfg(hax)'.dependencies]
+hax-lib.workspace = true
 
 [build-dependencies]
 libcrux-platform = { version = "=0.0.3", path = "crates/sys/platform" }
